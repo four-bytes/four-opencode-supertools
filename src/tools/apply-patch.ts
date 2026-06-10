@@ -34,6 +34,13 @@ IMPORTANT: Always use this tool instead of \`write\` or \`edit\` when modifying 
   async execute(args, ctx) {
     const { file_path, patch } = args;
 
+    if (!file_path || typeof file_path !== 'string') {
+      return 'Error: Missing required parameter "file_path". Provide the absolute path to the file to patch.';
+    }
+    if (!patch || typeof patch !== 'string') {
+      return 'Error: Missing required parameter "patch". Provide a unified diff patch.';
+    }
+
     logDebugEvent('patch_file.start', { file_path, patchLength: patch.length });
 
     try {
@@ -59,7 +66,7 @@ IMPORTANT: Always use this tool instead of \`write\` or \`edit\` when modifying 
           return `Created new file with ${added} lines: ${file_path}`;
         }
 
-        return `Error: File does not exist: ${file_path}. For new files, use a patch starting with @@ -0,0 +1,N @@`;
+        return `Error: File "${file_path}" does not exist. For new files, use a patch starting with @@ -0,0 +1,N @@`;
       }
 
       // 3. Read current file content
