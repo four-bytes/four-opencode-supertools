@@ -21,7 +21,7 @@ function mockCtx(dir: string) {
   };
 }
 
-describe('apply_patch tool', () => {
+describe('patch_file tool', () => {
   let testDir: string;
   let ctx: ReturnType<typeof mockCtx>;
 

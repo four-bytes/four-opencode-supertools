@@ -1,12 +1,12 @@
 {
   "name": "@four-bytes/four-opencode-supertools",
-  "version": "0.1.0",
-  "description": "Token-efficient supertools for opencode agents — apply_patch via unified diff and more",
+  "version": "0.2.0",
+  "description": "Token-efficient supertools for opencode agents — patch_file via unified diff and more",
   "type": "module",
   "exports": {
-    ".": {
+    "./server": {
       "types": "./dist/four-opencode-supertools.d.ts",
-      "default": "./dist/four-opencode-supertools.js"
+      "import": "./dist/four-opencode-supertools.js"
     }
   },
   "files": ["dist"],
@@ -21,10 +21,6 @@
   "author": {
     "name": "Robby Beyer",
     "email": "<EMAIL_1>"
-  },
-  "opencode": {
-    "type": "plugin",
-    "hooks": []
   },
   "scripts": {
     "build": "bun build ./src/four-opencode-supertools.ts --outdir dist --target bun --format esm --external @opencode-ai/plugin",

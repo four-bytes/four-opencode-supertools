@@ -34,14 +34,14 @@ IMPORTANT: Always use this tool instead of \`write\` or \`edit\` when modifying 
   async execute(args, ctx) {
     const { file_path, patch } = args;
 
-    logDebugEvent('apply_patch.start', { file_path, patchLength: patch.length });
+    logDebugEvent('patch_file.start', { file_path, patchLength: patch.length });
 
     try {
       // 1. Parse the diff
       const parsed = parseUnifiedDiff(patch);
 
       if (parsed.hunks.length === 0) {
-        logDebugEvent('apply_patch.no_hunks', { file_path });
+        logDebugEvent('patch_file.no_hunks', { file_path });
         return 'Error: Could not parse any hunks from the patch. Ensure the patch uses standard unified diff format with @@ headers.';
       }
 
@@ -55,7 +55,7 @@ IMPORTANT: Always use this tool instead of \`write\` or \`edit\` when modifying 
           writeFileSync(file_path, newContent, 'utf-8');
 
           const { added } = summarizeChanges(parsed.hunks);
-          logDebugEvent('apply_patch.new_file', { file_path, added });
+          logDebugEvent('patch_file.new_file', { file_path, added });
           return `Created new file with ${added} lines: ${file_path}`;
         }
 
@@ -69,7 +69,7 @@ IMPORTANT: Always use this tool instead of \`write\` or \`edit\` when modifying 
       // 4. Validate hunks against current file
       const validationError = validateHunks(parsed.hunks, originalContent);
       if (validationError) {
-        logDebugEvent('apply_patch.validation_error', { file_path, error: validationError });
+        logDebugEvent('patch_file.validation_error', { file_path, error: validationError });
         return `Error: Patch validation failed for ${file_path}:\n${validationError}\n\nThe file may have changed since you last read it. Re-read the file and regenerate the patch.`;
       }
 
@@ -81,7 +81,7 @@ IMPORTANT: Always use this tool instead of \`write\` or \`edit\` when modifying 
       const { added, removed } = summarizeChanges(parsed.hunks);
       const newLines = newContent.split('\n').length;
 
-      logDebugEvent('apply_patch.success', {
+      logDebugEvent('patch_file.success', {
         file_path,
         added,
         removed,
@@ -91,7 +91,7 @@ IMPORTANT: Always use this tool instead of \`write\` or \`edit\` when modifying 
       return `Successfully patched ${file_path}\n  ${added} line(s) added, ${removed} line(s) removed\n  ${originalLines} lines → ${newLines} lines`;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      logDebugEvent('apply_patch.error', { file_path, error: msg });
+      logDebugEvent('patch_file.error', { file_path, error: msg });
       return `Error applying patch to ${file_path}: ${msg}`;
     }
   },

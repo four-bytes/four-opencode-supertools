@@ -5,7 +5,7 @@
 - **Setup**: `mise run setup` or `bun install`
 - **Build**: `mise run build` or `bun build ./src/four-opencode-supertools.ts --outdir dist --target bun --format esm --external @opencode-ai/plugin`
 - **Test**: `mise run test` or `bun test`
-- **Single Test**: `bun test --filter "diff-parse"`
+- **Single Test**: `bun test --filter "diff-parse"` or `bun test --filter "batch-edit"`
 - **Typecheck**: `mise run typecheck` or `tsc --noEmit`
 - **Lint**: `mise run lint`
 - **Format**: `mise run format`
@@ -16,18 +16,43 @@
 - Entry: `src/four-opencode-supertools.ts` (four-opencode convention)
 - Build: Bun.build() to dist/, external: @opencode-ai/plugin
 - Test: bun test with describe/it/expect
-- Format: Prettier (single quotes, 100 width, 2 tab)
+- Format: Prettier (single quotes, 100 width, 2 tab, semicolons)
 
 ## Architecture
 
-- `src/four-opencode-supertools.ts` — Plugin entry, registers tools via `tool:` hook
-- `src/tools/apply-patch.ts` — apply_patch tool definition
-- `src/lib/diff-parse.ts` — Unified diff parser (extracts hunks)
-- `src/lib/diff-apply.ts` — Hunk application engine
-- `src/lib/debug-logger.ts` — JSONL debug logger (CC_DEBUG gated)
+```
+src/
+├── four-opencode-supertools.ts    # Plugin entry — registers all 4 tools
+├── tools/
+│   ├── apply-patch.ts             # Unified diff patch application (~90% token savings)
+│   ├── batch-edit.ts              # Multi-file search and replace (~80%)
+│   ├── lint-file.ts               # Single-file linting (~60%)
+│   └── run-tests.ts               # Targeted test execution (~50%)
+└── lib/
+    ├── diff-parse.ts              # Unified diff parser
+    ├── diff-apply.ts              # Hunk application engine
+    └── debug-logger.ts            # JSONL debug logger (CC_DEBUG gated)
+```
+
+## Tools Reference
+
+| Tool | Token Savings | Description |
+|------|---------------|-------------|
+| `apply_patch` | ~90% | Apply unified diff patch to a file |
+| `batch_edit` | ~80% | Search and replace across multiple files |
+| `lint_file` | ~60% | Run linter, return errors only |
+| `run_tests` | ~50% | Run tests, return failures only |
 
 ## Testing
 
 - Use bun test with descriptive test names
-- Test diff parsing with real unified diff examples
-- Test edge cases: malformed diffs, context mismatches, empty files, new files
+- Test each tool with real file operations in tmp directories
+- Test edge cases: missing files, invalid patterns, empty outputs
+- Clean up tmp files after each test
+
+## Standards
+
+- Apache-2.0 license
+- Conventional commits (feat:, fix:, docs:, test:)
+- ROADMAP.md for evolution planning
+- GUIDELINES.md for coding standards
