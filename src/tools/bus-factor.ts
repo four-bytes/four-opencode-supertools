@@ -2,23 +2,35 @@
 // Copyright (c) 2025-2026 Four Bytes
 
 import { tool } from '@opencode-ai/plugin';
-import { parseGitBlameForDir, type BlameLine } from '../lib/git-blame-parser';
-import { git } from '../lib/git-runner';
+import { parseGitLog, type Commit } from '../lib/git-utils';
 import { logDebugEvent } from '../lib/debug-logger';
 
+/**
+ * Bus factor: change-count-based approach (from git log, not blame).
+ *
+ * For each directory:
+ *   ownership_pct = (top_author_changes / total_directory_changes) × 100
+ *   bus_factor = 1 if ownership_pct > 70%
+ *   bus_factor = 2 if ownership_pct > 50%
+ *   bus_factor = 3+ otherwise
+ */
+
+interface DirStats {
+  byAuthor: Map<string, number>;
+  total: number;
+}
+
 interface BusFactorResult {
-  directory: string;
-  bus_factor: number;
-  total_lines: number;
-  top_author: string;
-  top_author_pct: number;
-  authors: string[];
-  risk: 'critical' | 'high' | 'medium' | 'low';
+  dir: string;
+  busFactor: number;
+  topAuthor: string;
+  topAuthorPct: number;
+  breakdown: Map<string, number>;
 }
 
 export const busFactorTool = tool({
   description:
-    'Calculate bus factor per directory — ownership concentration analysis. Identifies modules that would be orphaned if key contributors left.',
+    'Calculate bus factor per directory — ownership concentration analysis using commit change counts. Identifies modules that would be orphaned if key contributors left.',
 
   args: {
     since: tool.schema
@@ -26,13 +38,22 @@ export const busFactorTool = tool({
       .describe("Only consider commits since date (e.g., '90d', '6m')"),
   },
 
-  async execute(_args, _ctx) {
-    logDebugEvent('bus_factor.start', {});
+  async execute(args, ctx) {
+    const since = args.since as string | undefined;
+    const cwd = ctx.directory;
+
+    logDebugEvent('bus_factor.start', { since: since ?? 'none' });
 
     try {
-      const result = await computeBusFactor();
-      logDebugEvent('bus_factor.done', { directories: result.length });
-      return JSON.stringify(result);
+      const commits = await parseGitLog(cwd, since);
+      const results = computeBusFactorFromLog(commits);
+
+      if (results.length === 0) {
+        return 'No git history found';
+      }
+
+      logDebugEvent('bus_factor.done', { directories: results.length });
+      return formatBusFactorOutput(results);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logDebugEvent('bus_factor.error', { error: msg });
@@ -42,96 +63,101 @@ export const busFactorTool = tool({
 });
 
 /**
- * Get all tracked directories from git ls-files.
+ * Compute bus factor from commit log (change-count-based, not blame-based).
  */
-async function getTrackedDirectories(): Promise<string[]> {
-  const output = await git(['ls-files']);
-  const files = output.split('\n').filter((f) => f.trim() !== '');
-  const dirs = new Set<string>();
+export function computeBusFactorFromLog(commits: Commit[]): BusFactorResult[] {
+  const dirStats = new Map<string, DirStats>();
 
-  for (const file of files) {
-    const parts = file.split('/');
-    if (parts.length > 1) {
-      dirs.add(parts[0]!);
+  // Helper: extract top-level (or first-level) directory from file path
+  function getDir(filePath: string): string {
+    const idx = filePath.indexOf('/');
+    if (idx === -1) return '.';
+    return filePath.slice(0, idx);
+  }
+
+  const MIN_COMMITS = 5;
+
+  for (const commit of commits) {
+    for (const f of commit.files) {
+      const dir = getDir(f.path);
+      let ds = dirStats.get(dir);
+      if (!ds) {
+        ds = { byAuthor: new Map(), total: 0 };
+        dirStats.set(dir, ds);
+      }
+      ds.total++;
+      ds.byAuthor.set(commit.author, (ds.byAuthor.get(commit.author) ?? 0) + 1);
     }
   }
 
-  return Array.from(dirs).sort();
-}
-
-/**
- * Compute bus factor for all top-level directories.
- */
-export async function computeBusFactor(): Promise<BusFactorResult[]> {
-  const dirs = await getTrackedDirectories();
   const results: BusFactorResult[] = [];
 
-  for (const dir of dirs) {
-    try {
-      const blameMap = await parseGitBlameForDir(dir + '/');
+  for (const [dir, ds] of dirStats) {
+    // Directory with < 5 commits → mark as "insufficient data" (skip)
+    if (ds.total < MIN_COMMITS) continue;
 
-      if (blameMap.size === 0) continue;
-
-      const authorLines = new Map<string, number>();
-      let totalLines = 0;
-
-      for (const [, blameLines] of blameMap) {
-        for (const bl of blameLines) {
-          // Count only meaningful authors (skip "Not Committed Yet")
-          if (bl.author && bl.author !== 'Not Committed Yet') {
-            authorLines.set(bl.author, (authorLines.get(bl.author) ?? 0) + 1);
-            totalLines++;
-          }
-        }
+    // Find top author
+    let topAuthor = '';
+    let topChanges = 0;
+    for (const [author, changes] of ds.byAuthor) {
+      if (changes > topChanges) {
+        topAuthor = author;
+        topChanges = changes;
       }
-
-      if (totalLines === 0) continue;
-
-      // Sort authors by line count descending
-      const sortedAuthors = Array.from(authorLines.entries()).sort((a, b) => b[1] - a[1]);
-      const topAuthor = sortedAuthors[0];
-      if (!topAuthor) continue;
-
-      const topAuthorPct = Math.round((topAuthor[1] / totalLines) * 1000) / 10;
-
-      // Bus factor: how many authors needed to cover >50% of lines
-      let cumulative = 0;
-      let busFactor = 0;
-      const authorNames: string[] = [];
-      for (const [author, lines] of sortedAuthors) {
-        authorNames.push(author);
-        cumulative += lines;
-        busFactor++;
-        if (cumulative > totalLines * 0.5) break;
-      }
-
-      // Risk level
-      let risk: BusFactorResult['risk'] = 'low';
-      if (busFactor === 1) risk = 'critical';
-      else if (busFactor === 2) risk = 'high';
-      else if (busFactor === 3) risk = 'medium';
-
-      results.push({
-        directory: dir,
-        bus_factor: busFactor,
-        total_lines: totalLines,
-        top_author: topAuthor[0],
-        top_author_pct: topAuthorPct,
-        authors: authorNames,
-        risk,
-      });
-    } catch {
-      // Skip directories that fail (e.g., no tracked files with blame)
     }
+
+    const topAuthorPct = Math.round((topChanges / ds.total) * 1000) / 10;
+
+    // Bus factor: 1 if >70%, 2 if >50%, 3+ otherwise
+    let busFactor: number;
+    if (topAuthorPct > 70) {
+      busFactor = 1;
+    } else if (topAuthorPct > 50) {
+      busFactor = 2;
+    } else {
+      busFactor = 3; // 3+
+    }
+
+    results.push({
+      dir,
+      busFactor,
+      topAuthor,
+      topAuthorPct,
+      breakdown: ds.byAuthor,
+    });
   }
 
-  // Sort by risk: critical first, then by lowest bus_factor
-  const riskOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  // Sort by bus factor (worst first), then by top author pct desc
   results.sort((a, b) => {
-    const r = riskOrder[a.risk] - riskOrder[b.risk];
-    if (r !== 0) return r;
-    return a.bus_factor - b.bus_factor;
+    if (a.busFactor !== b.busFactor) return a.busFactor - b.busFactor;
+    return b.topAuthorPct - a.topAuthorPct;
   });
 
   return results;
+}
+
+/**
+ * Format bus factor results as plain text.
+ */
+function formatBusFactorOutput(results: BusFactorResult[]): string {
+  const lines: string[] = [];
+  lines.push('BUS FACTOR — per-directory ownership');
+
+  for (const r of results) {
+    const sorted = Array.from(r.breakdown.entries()).sort((a, b) => b[1] - a[1]);
+    const totalChanges = Array.from(r.breakdown.values()).reduce((s, v) => s + v, 0);
+
+    // Build breakdown: "alice 82%, bob 18%"
+    const breakdownParts = sorted.map(([author, changes]) => {
+      const pct = Math.round((changes / totalChanges) * 1000) / 10;
+      return `${author} ${pct}%`;
+    });
+    const detail = breakdownParts.join(', ');
+
+    const bfLabel = r.busFactor >= 3 ? '3+' : String(r.busFactor);
+    const dirPad = r.dir.padEnd(14);
+    lines.push(`  ${dirPad} → ${bfLabel}  (${detail})`);
+  }
+
+  return lines.join('\n');
 }

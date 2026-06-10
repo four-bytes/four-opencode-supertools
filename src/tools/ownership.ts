@@ -2,27 +2,15 @@
 // Copyright (c) 2025-2026 Four Bytes
 
 import { tool } from '@opencode-ai/plugin';
-import { parseGitBlame, parseGitBlameForDir, type BlameLine } from '../lib/git-blame-parser';
+import { parseGitBlame, parseGitBlameForDir, type BlameLine } from '../lib/git-utils';
 import { statSync, existsSync } from 'node:fs';
 import { logDebugEvent } from '../lib/debug-logger';
+import { resolve } from 'node:path';
 
 interface AuthorStat {
   author: string;
   lines: number;
   pct: number;
-  files?: number;
-}
-
-interface FileOwnership {
-  total: number;
-  authors: AuthorStat[];
-}
-
-interface OwnershipResult {
-  path: string;
-  total_lines: number;
-  authors: AuthorStat[];
-  files?: Record<string, FileOwnership>;
 }
 
 export const ownershipTool = tool({
@@ -35,15 +23,16 @@ export const ownershipTool = tool({
       .describe('File or directory path relative to repo root (default: entire repo)'),
   },
 
-  async execute(args, _ctx) {
+  async execute(args, ctx) {
     const targetPath = (args.path as string) || '.';
+    const cwd = ctx.directory;
 
     logDebugEvent('ownership.start', { path: targetPath });
 
     try {
-      const result = await computeOwnership(targetPath);
-      logDebugEvent('ownership.done', { total_lines: result.total_lines });
-      return JSON.stringify(result);
+      const result = await computeOwnership(targetPath, cwd);
+      logDebugEvent('ownership.done', {});
+      return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logDebugEvent('ownership.error', { error: msg });
@@ -54,25 +43,29 @@ export const ownershipTool = tool({
 
 /**
  * Compute author breakdown for a file or directory.
+ * Returns formatted text output.
  */
-export async function computeOwnership(targetPath: string): Promise<OwnershipResult> {
-  const isDir = existsSync(targetPath) && statSync(targetPath).isDirectory();
+export async function computeOwnership(targetPath: string, cwd: string): Promise<string> {
+  const absolutePath = resolve(cwd, targetPath);
+
+  if (!existsSync(absolutePath)) {
+    return `Path not found: ${targetPath}`;
+  }
+
+  const isDir = statSync(absolutePath).isDirectory();
   const normalizedPath = targetPath === '.' ? targetPath : targetPath.replace(/\/$/, '');
 
   if (isDir) {
-    return computeDirOwnership(normalizedPath);
+    return computeDirOwnership(normalizedPath, cwd);
   }
 
-  return computeFileOwnership(normalizedPath);
+  return computeFileOwnership(normalizedPath, cwd);
 }
 
 /**
  * Aggregate author stats from blame lines.
  */
-function aggregateAuthors(
-  blameLines: BlameLine[],
-  filesTouched?: number
-): { total: number; authors: AuthorStat[] } {
+function aggregateAuthors(blameLines: BlameLine[]): { total: number; authors: AuthorStat[] } {
   const authorLines = new Map<string, number>();
 
   for (const bl of blameLines) {
@@ -89,7 +82,6 @@ function aggregateAuthors(
       author,
       lines,
       pct: total > 0 ? Math.round((lines / total) * 1000) / 10 : 0,
-      ...(filesTouched !== undefined ? { files: filesTouched } : {}),
     });
   }
 
@@ -98,40 +90,52 @@ function aggregateAuthors(
   return { total, authors };
 }
 
-async function computeFileOwnership(filePath: string): Promise<OwnershipResult> {
-  const blameLines = await parseGitBlame(filePath);
+async function computeFileOwnership(filePath: string, cwd: string): Promise<string> {
+  const blameLines = await parseGitBlame(filePath, cwd);
   const { total, authors } = aggregateAuthors(blameLines);
 
-  return {
-    path: filePath,
-    total_lines: total,
-    authors,
-  };
+  if (total === 0) {
+    return 'File has no lines';
+  }
+
+  const lines: string[] = [];
+  lines.push(`OWNERSHIP — ${filePath} (${total} lines)`);
+
+  for (const a of authors) {
+    const isSilo = a.pct > 80;
+    const siloFlag = isSilo ? '  ⚠ KNOWLEDGE SILO' : '';
+    lines.push(`  ${a.author.padEnd(14)} ${a.lines.toString().padStart(5)} lines (${a.pct}%)${siloFlag}`);
+  }
+
+  const topAuthor = authors[0];
+  if (topAuthor && topAuthor.pct <= 80) {
+    lines.push(`  ⚠ ${topAuthor.author} owns <80% — no knowledge silo`);
+  }
+
+  return lines.join('\n');
 }
 
-async function computeDirOwnership(dirPath: string): Promise<OwnershipResult> {
-  const blameMap = await parseGitBlameForDir(dirPath);
+async function computeDirOwnership(dirPath: string, cwd: string): Promise<string> {
+  const blameMap = await parseGitBlameForDir(dirPath, cwd);
 
-  const files: Record<string, FileOwnership> = {};
+  if (blameMap.size === 0) {
+    return 'No source files in directory';
+  }
+
   const globalAuthorLines = new Map<string, number>();
-  const globalAuthorFiles = new Map<string, number>();
   let globalTotal = 0;
+  let fileCount = 0;
 
-  for (const [filePath, blameLines] of blameMap) {
+  for (const [, blameLines] of blameMap) {
     const { total, authors } = aggregateAuthors(blameLines);
-    files[filePath] = { total, authors };
-
     for (const author of authors) {
       globalAuthorLines.set(
         author.author,
         (globalAuthorLines.get(author.author) ?? 0) + author.lines
       );
-      globalAuthorFiles.set(
-        author.author,
-        (globalAuthorFiles.get(author.author) ?? 0) + 1
-      );
     }
     globalTotal += total;
+    fileCount++;
   }
 
   const globalAuthors: AuthorStat[] = [];
@@ -140,15 +144,20 @@ async function computeDirOwnership(dirPath: string): Promise<OwnershipResult> {
       author,
       lines,
       pct: globalTotal > 0 ? Math.round((lines / globalTotal) * 1000) / 10 : 0,
-      files: globalAuthorFiles.get(author),
     });
   }
   globalAuthors.sort((a, b) => b.lines - a.lines);
 
-  return {
-    path: dirPath === '.' ? '.' : dirPath,
-    total_lines: globalTotal,
-    authors: globalAuthors,
-    files,
-  };
+  const lines: string[] = [];
+  lines.push(`OWNERSHIP — ${dirPath === '.' ? '.' : dirPath}/ (${globalTotal.toLocaleString()} lines across ${fileCount} files)`);
+
+  for (const a of globalAuthors) {
+    const isSilo = a.pct > 80;
+    const siloFlag = isSilo ? '  ⚠ KNOWLEDGE SILO' : '';
+    lines.push(
+      `  ${a.author.padEnd(12)} ${a.lines.toLocaleString().padStart(6)} lines (${a.pct}%)${siloFlag}`
+    );
+  }
+
+  return lines.join('\n');
 }

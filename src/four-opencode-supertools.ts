@@ -11,6 +11,10 @@ import { busFactorTool } from './tools/bus-factor';
 import { implicitCouplingTool } from './tools/implicit-coupling';
 import { ownershipTool } from './tools/ownership';
 import { blastRadiusTool } from './tools/blast-radius';
+import { gitDiffTool } from './tools/git-diff';
+import { trendTool } from './tools/trend';
+import { prRiskTool } from './tools/pr-risk';
+import { gitLogStructuredTool } from './tools/git-log-structured';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -24,6 +28,10 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       implicit_coupling: implicitCouplingTool,
       ownership: ownershipTool,
       blast_radius: blastRadiusTool,
+      git_diff: gitDiffTool,
+      trend: trendTool,
+      pr_risk: prRiskTool,
+      git_log_structured: gitLogStructuredTool,
     },
   };
 };

@@ -22,7 +22,7 @@
 
 ```
 src/
-├── four-opencode-supertools.ts    # Plugin entry — registers all 9 tools
+├── four-opencode-supertools.ts    # Plugin entry — registers all 13 tools
 ├── tools/
 │   ├── apply-patch.ts             # Unified diff patch application (~90% token savings)
 │   ├── batch-edit.ts              # Multi-file search and replace (~80%)
@@ -32,24 +32,30 @@ src/
 │   ├── bus-factor.ts              # Ownership concentration (~80%)
 │   ├── implicit-coupling.ts       # Co-change dependencies (~85%)
 │   ├── ownership.ts               # Author breakdown (~80%)
+│   ├── git-diff.ts                # Structured git diff output (~90%)
 │   └── blast-radius.ts            # Impact analysis (~85%)
+│   ├── trend.ts                   # Curse score trend analysis (~90%)
+│   ├── pr-risk.ts                 # PR risk assessment (~90%)
+│   └── git-log-structured.ts      # Structured git log (~50%)
 └── lib/
     ├── diff-parse.ts              # Unified diff parser
     ├── diff-apply.ts              # Hunk application engine
     ├── debug-logger.ts            # JSONL debug logger (CC_DEBUG gated)
-    ├── git-runner.ts              # Safe git subprocess spawning
-    ├── git-log-parser.ts          # Structured git log parsing
-    └── git-blame-parser.ts        # Porcelain git blame parsing
+    └── git-utils.ts               # Shared git utilities (run, log, blame, file list)
 ```
 
 ## Tools Reference
 
-| Tool | Token Savings | Description |
-|------|---------------|-------------|
-| `apply_patch` | ~90% | Apply unified diff patch to a file |
-| `batch_edit` | ~80% | Search and replace across multiple files |
-| `lint_file` | ~60% | Run linter, return errors only |
-| `run_tests` | ~50% | Run tests, return failures only |
+| Tool          | Token Savings | Description                                             |
+| ------------- | ------------- | ------------------------------------------------------- |
+| `apply_patch` | ~90%          | Apply unified diff patch to a file                      |
+| `batch_edit`  | ~80%          | Search and replace across multiple files                |
+| `lint_file`   | ~60%          | Run linter, return errors only                          |
+| `run_tests`   | ~50%          | Run tests, return failures only                         |
+| `git_diff`    | ~90%          | Structured git diff output (staged, file, between refs) |
+| `trend`       | ~90%          | Curse score trends — files getting more dangerous      |
+| `pr_risk`     | ~90%          | Risk assessment of uncommitted changes                 |
+| `git_log_structured` | ~50%   | Structured git log with filters                        |
 
 ## Testing
 
