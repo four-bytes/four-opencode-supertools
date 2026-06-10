@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Fix ESLint issues"
+bun x eslint . --ext .ts --fix

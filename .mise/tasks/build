@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Build the plugin with Bun"
+#MISE depends=["setup"]
+#MISE sources=["src/**/*.ts"]
+#MISE outputs=["dist/four-opencode-supertools.js"]
+
+bun build ./src/four-opencode-supertools.ts --outdir dist --target bun --format esm --external @opencode-ai/plugin

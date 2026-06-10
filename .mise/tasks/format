@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Format with Prettier"
+bun x prettier --write "src/**/*.ts" "tests/**/*.ts"
