@@ -22,16 +22,24 @@
 
 ```
 src/
-├── four-opencode-supertools.ts    # Plugin entry — registers all 4 tools
+├── four-opencode-supertools.ts    # Plugin entry — registers all 9 tools
 ├── tools/
 │   ├── apply-patch.ts             # Unified diff patch application (~90% token savings)
 │   ├── batch-edit.ts              # Multi-file search and replace (~80%)
 │   ├── lint-file.ts               # Single-file linting (~60%)
 │   └── run-tests.ts               # Targeted test execution (~50%)
+│   ├── curse-score.ts             # File risk ranking (~80%)
+│   ├── bus-factor.ts              # Ownership concentration (~80%)
+│   ├── implicit-coupling.ts       # Co-change dependencies (~85%)
+│   ├── ownership.ts               # Author breakdown (~80%)
+│   └── blast-radius.ts            # Impact analysis (~85%)
 └── lib/
     ├── diff-parse.ts              # Unified diff parser
     ├── diff-apply.ts              # Hunk application engine
-    └── debug-logger.ts            # JSONL debug logger (CC_DEBUG gated)
+    ├── debug-logger.ts            # JSONL debug logger (CC_DEBUG gated)
+    ├── git-runner.ts              # Safe git subprocess spawning
+    ├── git-log-parser.ts          # Structured git log parsing
+    └── git-blame-parser.ts        # Porcelain git blame parsing
 ```
 
 ## Tools Reference

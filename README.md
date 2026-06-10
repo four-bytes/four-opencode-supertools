@@ -4,12 +4,24 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
+### Code Editing & Quality
+
 | Tool | Token Savings | Description |
 |------|---------------|-------------|
 | **`apply_patch`** | ~90% | Apply unified diff patch instead of full-file `write` |
 | **`batch_edit`** | ~80% | Search and replace across multiple files in one call |
 | **`lint_file`** | ~60% | Run linter on specific file, return errors only |
 | **`run_tests`** | ~50% | Run specific test file, return failures only |
+
+### Git History Risk Analytics
+
+| Tool | Token Savings | Description |
+|------|---------------|-------------|
+| **`curse_score`** | ~80% | Rank files by risk via curse score algorithm |
+| **`bus_factor`** | ~80% | Ownership concentration per directory |
+| **`implicit_coupling`** | ~85% | Hidden co-change dependencies |
+| **`ownership`** | ~80% | Author breakdown per file/directory |
+| **`blast_radius`** | ~85% | Impact analysis — what might break? |
 
 ### `apply_patch`
 

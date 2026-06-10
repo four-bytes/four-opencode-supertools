@@ -35,16 +35,24 @@ Every tool in this plugin exists to save tokens:
 ## Plugin Structure
 ```
 src/
-├── four-opencode-supertools.ts   # Plugin entry — registers all tools
+├── four-opencode-supertools.ts   # Plugin entry — registers all 9 tools
 ├── tools/
 │   ├── apply-patch.ts            # Unified diff patch application
 │   ├── batch-edit.ts             # Multi-file search and replace
 │   ├── lint-file.ts              # Single-file linting
-│   └── run-tests.ts              # Targeted test execution
+│   ├── run-tests.ts              # Targeted test execution
+│   ├── curse-score.ts            # File risk ranking
+│   ├── bus-factor.ts             # Ownership concentration
+│   ├── implicit-coupling.ts      # Co-change dependencies
+│   ├── ownership.ts              # Author breakdown
+│   └── blast-radius.ts           # Impact analysis
 └── lib/
     ├── diff-parse.ts             # Unified diff parser
     ├── diff-apply.ts             # Hunk application engine
-    └── debug-logger.ts           # JSONL debug logger
+    ├── debug-logger.ts           # JSONL debug logger
+    ├── git-runner.ts             # Safe git subprocess spawning
+    ├── git-log-parser.ts         # Structured git log parsing
+    └── git-blame-parser.ts       # Porcelain git blame parsing
 ```
 
 ## License Header

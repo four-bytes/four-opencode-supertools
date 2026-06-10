@@ -5,7 +5,7 @@
 ## Wave Ordering
 
 ```
-S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source readiness) → S4 (smart_read + advanced tools)
+S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source readiness) → S4 (git intelligence) → S5 (smart_read + advanced tools) → S6 (IDE integration)
 ```
 
 ## Wave S1 — `apply_patch` ✅
@@ -87,7 +87,31 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 - [ ] Issue templates guide quality reports
 - [ ] Repository looks professional and discoverable
 
-## Wave S4 — Advanced Tools
+## Wave S4 — Git Intelligence ✅
+
+> DONE. Five git-history risk analytics tools. Surface hidden risks, knowledge silos, and co-change dependencies.
+
+| Tool | Token Savings | Description |
+|------|---------------|-------------|
+| `curse_score` | ~80% | Rank files by risk via curse score algorithm |
+| `bus_factor` | ~80% | Ownership concentration per directory |
+| `implicit_coupling` | ~85% | Hidden co-change dependencies |
+| `ownership` | ~80% | Author breakdown per file/directory |
+| `blast_radius` | ~85% | Impact analysis — what might break? |
+
+### Tasks
+
+- [x] `curse_score` — changes × author chaos × recency × churn acceleration
+- [x] `bus_factor` — git blame-based directory ownership concentration
+- [x] `implicit_coupling` — co-commit pair detection via git log --numstat
+- [x] `ownership` — per-file/per-directory author line count breakdown
+- [x] `blast_radius` — coupled files + author-related impact analysis
+- [x] `git-runner` — safe git subprocess spawning with error handling
+- [x] `git-log-parser` — structured commit + file change parsing
+- [x] `git-blame-parser` — porcelain blame output parsing
+- [x] 30 tests in `tests/git-tools.test.ts`
+
+## Wave S5 — Advanced Tools
 
 > Future. Additional token-saving tools.
 
@@ -100,7 +124,7 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 | `file_info` | ~30% | File size, mtime, type, encoding without read |
 | `project_structure` | ~50% | Cached directory tree with metadata |
 
-## Wave S5 — IDE Integration
+## Wave S6 — IDE Integration
 
 > Future. LSP-powered tools for smarter code operations.
 
@@ -121,13 +145,14 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 | S1 | ✅ Done |
 | S2 | 🔄 In Progress |
 | S3 | 🔄 In Progress |
-| S4 | ⏳ Planned |
+| S4 | ✅ Done |
 | S5 | ⏳ Planned |
+| S6 | ⏳ Planned |
 
 ## Execution Order
 
 ```
-S1 ✅ → S2 🔄 → S3 🔄 → S4 → S5
+S1 ✅ → S2 🔄 → S3 🔄 → S4 ✅ → S5 → S6
 ```
 
 S3 runs in parallel with S2.
