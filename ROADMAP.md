@@ -7,7 +7,8 @@
 ```
 S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source readiness) → S4 (git intelligence) → S5 (smart_read + advanced tools) → S6 (IDE integration)
 ```
-
+S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source readiness) → S4 (git intelligence) → S5 (github_ops) → S6 (IDE integration)
+```
 ## Wave S1 — `apply_patch` ✅
 
 > DONE. Unified diff patch application saving ~90% tokens vs full-file write.
@@ -129,18 +130,19 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 - [x] `git_log_structured` — structured git log with author/date/file filters
 - [x] 30 tests in `tests/git-tools.test.ts` + `tests/git-diff.test.ts`
 
-## Wave S5 — Advanced Tools
+## Wave S5 — GitHub Ops ✅
 
-> Future. Additional token-saving tools.
+> DONE. GitHub CLI wrapper tools. Wrap `gh` CLI commands as structured JSON-output tools. Saves ~90% tokens vs. bash→read→parse. Replaces reliance on the `@github` subagent for common ops.
 
-### Candidates
+| Tool                | Token Savings | Description                                              |
+| ------------------- | ------------- | -------------------------------------------------------- |
+| `gh_issue_list`     | ~90%          | List open issues with filtering (label, assignee, state) |
+| `gh_issue_close`    | ~90%          | Close issue with zombie detection + optional comment     |
+| `gh_pr_status`      | ~90%          | PR mergeability check (reviews, CI, conflicts)           |
+| `gh_branch_cleanup` | ~90%          | Find + delete stale merged remote branches               |
+| `gh_release_info`   | ~90%          | Structured release metadata (version, tag, notes, assets)|
 
-| Tool                | Token Savings | Description                                   |
-| ------------------- | ------------- | --------------------------------------------- |
-| `smart_read`        | ~40%          | Read file sections by symbol/line range       |
-| ~                   | ~             | (superseded by `git_diff` with `staged` flag) |
-| `file_info`         | ~30%          | File size, mtime, type, encoding without read |
-| `project_structure` | ~50%          | Cached directory tree with metadata           |
+Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/four-opencode-plugins/blob/main/ROADMAP.md)
 
 ## Wave S6 — IDE Integration
 
@@ -164,7 +166,7 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 | S2   | 🔄 In Progress |
 | S3   | 🔄 In Progress |
 | S4   | ✅ Done        |
-| S5   | ⏳ Planned     |
+| S5   | ✅ Done        |
 | S6   | ⏳ Planned     |
 
 ## Execution Order

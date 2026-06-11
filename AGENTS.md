@@ -22,7 +22,7 @@
 
 ```
 src/
-├── four-opencode-supertools.ts    # Plugin entry — registers all 13 tools
+├── four-opencode-supertools.ts    # Plugin entry — registers all 18 tools
 ├── tools/
 │   ├── apply-patch.ts             # Unified diff patch application (~90% token savings)
 │   ├── batch-edit.ts              # Multi-file search and replace (~80%)
@@ -37,11 +37,17 @@ src/
 │   ├── trend.ts                   # Curse score trend analysis (~90%)
 │   ├── pr-risk.ts                 # PR risk assessment (~90%)
 │   └── git-log-structured.ts      # Structured git log (~50%)
+│   ├── gh-issue-list.ts           # GitHub issue list with filters (~90%)
+│   ├── gh-issue-close.ts          # Close issue + zombie detection (~90%)
+│   ├── gh-pr-status.ts            # PR mergeability check (~90%)
+│   ├── gh-branch-cleanup.ts       # Stale merged branch cleanup (~90%)
+│   └── gh-release-info.ts         # Structured release metadata (~90%)
 └── lib/
     ├── diff-parse.ts              # Unified diff parser
     ├── diff-apply.ts              # Hunk application engine
     ├── debug-logger.ts            # JSONL debug logger (CC_DEBUG gated)
     └── git-utils.ts               # Shared git utilities (run, log, blame, file list)
+    ├── gh-utils.ts                # Shared gh CLI utilities (run, repo resolution) (run, log, blame, file list)
 ```
 
 ## Tools Reference
@@ -56,6 +62,11 @@ src/
 | `trend`       | ~90%          | Curse score trends — files getting more dangerous      |
 | `pr_risk`     | ~90%          | Risk assessment of uncommitted changes                 |
 | `git_log_structured` | ~50%   | Structured git log with filters                        |
+| `gh_issue_list`      | ~90%  | List GitHub issues with filtering                       |
+| `gh_issue_close`     | ~90%  | Close issue with zombie detection + comment             |
+| `gh_pr_status`       | ~90%  | PR mergeability check (reviews, CI, conflicts)          |
+| `gh_branch_cleanup`  | ~90%  | Find + delete stale merged remote branches              |
+| `gh_release_info`    | ~90%  | Structured release metadata (version, tag, notes)                        |
 
 ## Testing
 

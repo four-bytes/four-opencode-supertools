@@ -14,6 +14,11 @@ import { blastRadiusTool } from './tools/blast-radius';
 import { gitDiffTool } from './tools/git-diff';
 import { trendTool } from './tools/trend';
 import { prRiskTool } from './tools/pr-risk';
+import { ghIssueListTool } from './tools/gh-issue-list';
+import { ghIssueCloseTool } from './tools/gh-issue-close';
+import { ghPrStatusTool } from './tools/gh-pr-status';
+import { ghBranchCleanupTool } from './tools/gh-branch-cleanup';
+import { ghReleaseInfoTool } from './tools/gh-release-info';
 import { gitLogStructuredTool } from './tools/git-log-structured';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
@@ -31,6 +36,11 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       git_diff: gitDiffTool,
       trend: trendTool,
       pr_risk: prRiskTool,
+      gh_issue_list: ghIssueListTool,
+      gh_issue_close: ghIssueCloseTool,
+      gh_pr_status: ghPrStatusTool,
+      gh_branch_cleanup: ghBranchCleanupTool,
+      gh_release_info: ghReleaseInfoTool,
       git_log_structured: gitLogStructuredTool,
     },
   };
