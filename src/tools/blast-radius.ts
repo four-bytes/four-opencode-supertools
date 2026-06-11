@@ -31,9 +31,7 @@ export const blastRadiusTool = tool({
 
   args: {
     file: tool.schema.string().describe('File path relative to repo root to analyze'),
-    since: tool.schema
-      .string()
-      .describe("Only consider commits since date (e.g., '90d', '6m')"),
+    since: tool.schema.string().describe("Only consider commits since date (e.g., '90d', '6m')"),
   },
 
   async execute(args, ctx) {
@@ -177,11 +175,7 @@ export async function computeBlastRadius(
       }
     } else {
       const reasonType =
-        couplingScore > 0.5
-          ? 'coupling'
-          : authorScore > 0
-            ? 'shared-author'
-            : 'same-directory';
+        couplingScore > 0.5 ? 'coupling' : authorScore > 0 ? 'shared-author' : 'same-directory';
       entries.set(file, {
         file,
         riskScore,
@@ -198,7 +192,8 @@ export async function computeBlastRadius(
     const isParent =
       targetDir !== '.' &&
       file.includes('/') &&
-      (file.startsWith(targetDir + '/') || targetDir.startsWith(file.slice(0, file.lastIndexOf('/')) + '/'));
+      (file.startsWith(targetDir + '/') ||
+        targetDir.startsWith(file.slice(0, file.lastIndexOf('/')) + '/'));
     const dirProx = dirScore || (isParent ? 0.5 : 0.0);
     const reasonParts = [`coupling (${strength.toFixed(2)})`];
     if (dirProx > 0) reasonParts.push('same directory');
@@ -208,7 +203,9 @@ export async function computeBlastRadius(
   // Same-author files
   for (const file of sameAuthorFiles) {
     const dirProx = sameDirFiles.has(file) ? 1.0 : 0.5;
-    const reasonParts = [`shared author (${dominantAuthor}, ${Math.round(dominantAuthorPct * 100)}% owner)`];
+    const reasonParts = [
+      `shared author (${dominantAuthor}, ${Math.round(dominantAuthorPct * 100)}% owner)`,
+    ];
     if (dirProx >= 1.0) reasonParts.push('same directory');
     addEntry(file, 0, dominantAuthorPct, dirProx, reasonParts);
   }

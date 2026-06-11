@@ -28,13 +28,20 @@ describe('run_tests tool', () => {
   });
 
   afterEach(() => {
-    try { rmSync(testDir, { recursive: true }); } catch { /* ignore */ }
+    try {
+      rmSync(testDir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
   });
 
   it('returns error for missing test file', async () => {
-    const result = await runTestsTool.execute({
-      test_file: join(testDir, 'nonexistent.test.ts'),
-    }, ctx);
+    const result = await runTestsTool.execute(
+      {
+        test_file: join(testDir, 'nonexistent.test.ts'),
+      },
+      ctx
+    );
 
     expect(result).toContain('Error');
     expect(result).toContain('Test file not found');
@@ -42,19 +49,26 @@ describe('run_tests tool', () => {
 
   it('runs bun test on a valid test file', async () => {
     const testFilePath = join(testDir, 'simple.test.ts');
-    writeFileSync(testFilePath, `
+    writeFileSync(
+      testFilePath,
+      `
 import { describe, it, expect } from 'bun:test';
 describe('simple', () => {
   it('passes', () => {
     expect(1 + 1).toBe(2);
   });
 });
-`, 'utf-8');
+`,
+      'utf-8'
+    );
 
-    const result = await runTestsTool.execute({
-      test_file: testFilePath,
-      framework: 'bun',
-    }, ctx);
+    const result = await runTestsTool.execute(
+      {
+        test_file: testFilePath,
+        framework: 'bun',
+      },
+      ctx
+    );
 
     // Should contain pass indication — either JUnit XML or text output
     expect(typeof result).toBe('string');
@@ -63,7 +77,9 @@ describe('simple', () => {
 
   it('handles test filter parameter', async () => {
     const testFilePath = join(testDir, 'filtered.test.ts');
-    writeFileSync(testFilePath, `
+    writeFileSync(
+      testFilePath,
+      `
 import { describe, it, expect } from 'bun:test';
 describe('suite', () => {
   it('test one', () => {
@@ -73,13 +89,18 @@ describe('suite', () => {
     expect(2).toBe(2);
   });
 });
-`, 'utf-8');
+`,
+      'utf-8'
+    );
 
-    const result = await runTestsTool.execute({
-      test_file: testFilePath,
-      filter: 'test one',
-      framework: 'bun',
-    }, ctx);
+    const result = await runTestsTool.execute(
+      {
+        test_file: testFilePath,
+        filter: 'test one',
+        framework: 'bun',
+      },
+      ctx
+    );
 
     expect(typeof result).toBe('string');
   });

@@ -27,14 +27,23 @@ function detectLinter(filePath: string): LinterType {
   }
 }
 
-function buildLintCommand(linter: LinterType, filePath: string): { cmd: string[]; timeout: number } {
+function buildLintCommand(
+  linter: LinterType,
+  filePath: string
+): { cmd: string[]; timeout: number } {
   switch (linter) {
     case 'eslint':
       return { cmd: ['bun', 'x', 'eslint', filePath, '--format', 'stylish'], timeout: 30000 };
     case 'phpstan':
-      return { cmd: ['phpstan', 'analyse', filePath, '--error-format=raw', '--no-progress'], timeout: 60000 };
+      return {
+        cmd: ['phpstan', 'analyse', filePath, '--error-format=raw', '--no-progress'],
+        timeout: 60000,
+      };
     case 'pint':
-      return { cmd: ['php', 'vendor/bin/pint', filePath, '--test', '--format=json'], timeout: 30000 };
+      return {
+        cmd: ['php', 'vendor/bin/pint', filePath, '--test', '--format=json'],
+        timeout: 30000,
+      };
     case 'ruff':
       return { cmd: ['ruff', 'check', filePath, '--output-format=concise'], timeout: 30000 };
     default:
@@ -42,7 +51,12 @@ function buildLintCommand(linter: LinterType, filePath: string): { cmd: string[]
   }
 }
 
-function parseEslintOutput(output: string): { errors: string[]; warnings: string[]; errorCount: number; warningCount: number } {
+function parseEslintOutput(output: string): {
+  errors: string[];
+  warnings: string[];
+  errorCount: number;
+  warningCount: number;
+} {
   const errors: string[] = [];
   const warnings: string[] = [];
   let errorCount = 0;
@@ -82,7 +96,12 @@ Returns structured output: error count, warning count, and formatted error list.
 
   args: {
     file_path: tool.schema.string().describe('Absolute path to the file to lint'),
-    linter: tool.schema.string().optional().describe('Override auto-detection: "eslint", "phpstan", "pint", "ruff", or "auto" (default)'),
+    linter: tool.schema
+      .string()
+      .optional()
+      .describe(
+        'Override auto-detection: "eslint", "phpstan", "pint", "ruff", or "auto" (default)'
+      ),
   },
 
   async execute(args, ctx) {
@@ -125,7 +144,9 @@ Returns structured output: error count, warning count, and formatted error list.
         );
 
         const raceResult = await Promise.race([
-          new Response(proc.stdout).text().then(t => ({ stdout: t, stderr: '', exitCode: proc.exitCode })),
+          new Response(proc.stdout)
+            .text()
+            .then((t) => ({ stdout: t, stderr: '', exitCode: proc.exitCode })),
           timeoutPromise,
         ]);
 
@@ -146,30 +167,29 @@ Returns structured output: error count, warning count, and formatted error list.
           ];
           if (parsed.errors.length > 0) {
             lines.push('\nErrors:');
-            lines.push(...parsed.errors.map(e => `  ${e}`));
+            lines.push(...parsed.errors.map((e) => `  ${e}`));
           }
           if (parsed.warnings.length > 0) {
             lines.push('\nWarnings:');
-            lines.push(...parsed.warnings.map(w => `  ${w}`));
+            lines.push(...parsed.warnings.map((w) => `  ${w}`));
           }
           result = lines.join('\n');
         }
       } else {
         // Generic handling for other linters
-        const lines = output.split('\n').filter(l => l.trim().length > 0);
+        const lines = output.split('\n').filter((l) => l.trim().length > 0);
         if (exitCode === 0) {
           result = `✅ No lint errors in ${file_path}`;
         } else {
           result = [
             `Lint results for ${file_path} (${linter}):`,
-            ...lines.map(l => `  ${l}`),
+            ...lines.map((l) => `  ${l}`),
           ].join('\n');
         }
       }
 
       logDebugEvent('lint_file.complete', { file_path, exitCode });
       return result;
-
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logDebugEvent('lint_file.error', { file_path, error: msg });

@@ -33,9 +33,7 @@ export const busFactorTool = tool({
     'Calculate bus factor per directory — ownership concentration analysis using commit change counts. Identifies modules that would be orphaned if key contributors left.',
 
   args: {
-    since: tool.schema
-      .string()
-      .describe("Only consider commits since date (e.g., '90d', '6m')"),
+    since: tool.schema.string().describe("Only consider commits since date (e.g., '90d', '6m')"),
   },
 
   async execute(args, ctx) {

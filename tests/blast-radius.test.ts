@@ -15,7 +15,7 @@ mock.module('../src/lib/git-utils', () => {
     ...real,
     runGit: runGitMock,
     parseGitLog: async (cwd: string, since?: string) => {
-      const args = ['log', '--numstat', "--format=%H|%an|%aI"];
+      const args = ['log', '--numstat', '--format=%H|%an|%aI'];
       if (since) args.push(`--since=${since}`);
       const output = await runGitMock(args, cwd);
       return real.parseLogOutput(output);
@@ -26,7 +26,10 @@ mock.module('../src/lib/git-utils', () => {
         const output = await runGitMock(['blame', '--line-porcelain', '--', filePath], workDir);
         return real.parseBlameOutput(output);
       } catch (err: any) {
-        if (err.message.includes('no such path') || err.message.includes('exists on disk, but not in')) {
+        if (
+          err.message.includes('no such path') ||
+          err.message.includes('exists on disk, but not in')
+        ) {
           return [];
         }
         throw err;
@@ -37,7 +40,14 @@ mock.module('../src/lib/git-utils', () => {
 
 import { computeBlastRadius } from '../src/tools/blast-radius';
 
-function buildLogOutput(commits: { hash: string; author: string; date: string; files: { path: string; added: number; deleted: number }[] }[]): string {
+function buildLogOutput(
+  commits: {
+    hash: string;
+    author: string;
+    date: string;
+    files: { path: string; added: number; deleted: number }[];
+  }[]
+): string {
   const lines: string[] = [];
   for (const c of commits) {
     lines.push(`${c.hash}|${c.author}|${c.date}`);
@@ -121,9 +131,7 @@ describe('computeBlastRadius', () => {
         hash: 'b'.repeat(40),
         author: 'dougwilson',
         date: new Date().toISOString(),
-        files: [
-          { path: 'lib/response.ts', added: 5, deleted: 0 },
-        ],
+        files: [{ path: 'lib/response.ts', added: 5, deleted: 0 }],
       },
     ]);
 

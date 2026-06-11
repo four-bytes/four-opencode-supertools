@@ -19,10 +19,20 @@ Returns a summary of files changed and replacements per file.`,
 
   args: {
     search: tool.schema.string().describe('Regex pattern to search for (JavaScript regex syntax)'),
-    replace: tool.schema.string().describe('Replacement text. Use $1, $2, etc. for capture groups.'),
-    glob: tool.schema.string().describe('Glob pattern to filter files (e.g., "src/**/*.ts", "**/*.php")'),
-    path: tool.schema.string().optional().describe('Base directory for glob search. Defaults to project root.'),
-    dry_run: tool.schema.boolean().optional().describe('If true, show what would change without writing files.'),
+    replace: tool.schema
+      .string()
+      .describe('Replacement text. Use $1, $2, etc. for capture groups.'),
+    glob: tool.schema
+      .string()
+      .describe('Glob pattern to filter files (e.g., "src/**/*.ts", "**/*.php")'),
+    path: tool.schema
+      .string()
+      .optional()
+      .describe('Base directory for glob search. Defaults to project root.'),
+    dry_run: tool.schema
+      .boolean()
+      .optional()
+      .describe('If true, show what would change without writing files.'),
   },
 
   async execute(args, ctx) {
@@ -110,9 +120,13 @@ Returns a summary of files changed and replacements per file.`,
         lines.push('\nDry run — no files were modified. Remove dry_run: true to apply changes.');
       }
 
-      logDebugEvent('batch_edit.complete', { files: files.length, matches: totalMatches, changed: filesChanged, dry_run });
+      logDebugEvent('batch_edit.complete', {
+        files: files.length,
+        matches: totalMatches,
+        changed: filesChanged,
+        dry_run,
+      });
       return lines.join('\n');
-
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logDebugEvent('batch_edit.error', { error: msg });

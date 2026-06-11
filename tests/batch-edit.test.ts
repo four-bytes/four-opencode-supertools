@@ -28,19 +28,26 @@ describe('batch_edit tool', () => {
   });
 
   afterEach(() => {
-    try { rmSync(testDir, { recursive: true }); } catch { /* ignore */ }
+    try {
+      rmSync(testDir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
   });
 
   it('replaces text across multiple files', async () => {
     writeFileSync(join(testDir, 'a.ts'), 'const foo = 1;\nconst bar = foo;\n', 'utf-8');
     writeFileSync(join(testDir, 'b.ts'), 'const foo = 2;\n', 'utf-8');
 
-    const result = await batchEditTool.execute({
-      search: 'foo',
-      replace: 'baz',
-      glob: '*.ts',
-      path: '.',
-    }, ctx);
+    const result = await batchEditTool.execute(
+      {
+        search: 'foo',
+        replace: 'baz',
+        glob: '*.ts',
+        path: '.',
+      },
+      ctx
+    );
 
     expect(result).toContain('3 match(es) across 2 file(s)');
     expect(readFileSync(join(testDir, 'a.ts'), 'utf-8')).toBe('const baz = 1;\nconst bar = baz;\n');
@@ -50,12 +57,15 @@ describe('batch_edit tool', () => {
   it('dry run does not modify files', async () => {
     writeFileSync(join(testDir, 'test.ts'), 'const foo = 1;\n', 'utf-8');
 
-    const result = await batchEditTool.execute({
-      search: 'foo',
-      replace: 'bar',
-      glob: '*.ts',
-      dry_run: true,
-    }, ctx);
+    const result = await batchEditTool.execute(
+      {
+        search: 'foo',
+        replace: 'bar',
+        glob: '*.ts',
+        dry_run: true,
+      },
+      ctx
+    );
 
     expect(result).toContain('[DRY RUN]');
     expect(result).toContain('Dry run');
@@ -65,21 +75,27 @@ describe('batch_edit tool', () => {
   it('handles regex with capture groups', async () => {
     writeFileSync(join(testDir, 'test.ts'), 'const x = oldName;\n', 'utf-8');
 
-    const result = await batchEditTool.execute({
-      search: 'old(\\w+)',
-      replace: 'new$1',
-      glob: '*.ts',
-    }, ctx);
+    const result = await batchEditTool.execute(
+      {
+        search: 'old(\\w+)',
+        replace: 'new$1',
+        glob: '*.ts',
+      },
+      ctx
+    );
 
     expect(readFileSync(join(testDir, 'test.ts'), 'utf-8')).toBe('const x = newName;\n');
   });
 
   it('returns error for invalid regex', async () => {
-    const result = await batchEditTool.execute({
-      search: '[unclosed',
-      replace: 'x',
-      glob: '*.ts',
-    }, ctx);
+    const result = await batchEditTool.execute(
+      {
+        search: '[unclosed',
+        replace: 'x',
+        glob: '*.ts',
+      },
+      ctx
+    );
 
     expect(result).toContain('Error');
     expect(result).toContain('Invalid regex');

@@ -104,7 +104,9 @@ async function computeFileOwnership(filePath: string, cwd: string): Promise<stri
   for (const a of authors) {
     const isSilo = a.pct > 80;
     const siloFlag = isSilo ? '  ⚠ KNOWLEDGE SILO' : '';
-    lines.push(`  ${a.author.padEnd(14)} ${a.lines.toString().padStart(5)} lines (${a.pct}%)${siloFlag}`);
+    lines.push(
+      `  ${a.author.padEnd(14)} ${a.lines.toString().padStart(5)} lines (${a.pct}%)${siloFlag}`
+    );
   }
 
   const topAuthor = authors[0];
@@ -149,7 +151,9 @@ async function computeDirOwnership(dirPath: string, cwd: string): Promise<string
   globalAuthors.sort((a, b) => b.lines - a.lines);
 
   const lines: string[] = [];
-  lines.push(`OWNERSHIP — ${dirPath === '.' ? '.' : dirPath}/ (${globalTotal.toLocaleString()} lines across ${fileCount} files)`);
+  lines.push(
+    `OWNERSHIP — ${dirPath === '.' ? '.' : dirPath}/ (${globalTotal.toLocaleString()} lines across ${fileCount} files)`
+  );
 
   for (const a of globalAuthors) {
     const isSilo = a.pct > 80;

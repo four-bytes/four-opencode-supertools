@@ -182,7 +182,9 @@ function formatCurseScoreOutput(results: CurseResult[], top: number): string {
     const authorsStr = `${r.authors} authors`.padStart(12);
     const changesStr = `${r.changes} changes`.padStart(12);
     const churnStr = `churn ${r.churnRate}/yr`;
-    lines.push(`  ${rankPad}. ${filePad} ${scoreStr}   ${authorsStr}   ${changesStr}   ${churnStr}`);
+    lines.push(
+      `  ${rankPad}. ${filePad} ${scoreStr}   ${authorsStr}   ${changesStr}   ${churnStr}`
+    );
   }
 
   return lines.join('\n');

@@ -94,12 +94,8 @@ describe('computeCurseScores', () => {
       makeCommit('b'.repeat(40), 'Alice', now.toISOString(), [
         { path: 'src/hot.ts', added: 5, deleted: 0 },
       ]),
-      makeCommit('c'.repeat(40), 'Alice', oldDate, [
-        { path: 'src/cold.ts', added: 5, deleted: 0 },
-      ]),
-      makeCommit('d'.repeat(40), 'Alice', oldDate, [
-        { path: 'src/cold.ts', added: 5, deleted: 0 },
-      ]),
+      makeCommit('c'.repeat(40), 'Alice', oldDate, [{ path: 'src/cold.ts', added: 5, deleted: 0 }]),
+      makeCommit('d'.repeat(40), 'Alice', oldDate, [{ path: 'src/cold.ts', added: 5, deleted: 0 }]),
     ];
 
     const results = computeCurseScores(commits, 10);

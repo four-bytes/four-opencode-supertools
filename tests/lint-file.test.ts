@@ -28,13 +28,20 @@ describe('lint_file tool', () => {
   });
 
   afterEach(() => {
-    try { rmSync(testDir, { recursive: true }); } catch { /* ignore */ }
+    try {
+      rmSync(testDir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
   });
 
   it('returns error for missing file', async () => {
-    const result = await lintFileTool.execute({
-      file_path: join(testDir, 'nonexistent.ts'),
-    }, ctx);
+    const result = await lintFileTool.execute(
+      {
+        file_path: join(testDir, 'nonexistent.ts'),
+      },
+      ctx
+    );
 
     expect(result).toContain('Error');
     expect(result).toContain('File not found');
@@ -43,10 +50,13 @@ describe('lint_file tool', () => {
   it('detects eslint for .ts files', async () => {
     writeFileSync(join(testDir, 'test.ts'), 'const x = 1;\n', 'utf-8');
 
-    const result = await lintFileTool.execute({
-      file_path: join(testDir, 'test.ts'),
-      linter: 'eslint',
-    }, ctx);
+    const result = await lintFileTool.execute(
+      {
+        file_path: join(testDir, 'test.ts'),
+        linter: 'eslint',
+      },
+      ctx
+    );
 
     // Should not crash — might fail if eslint not installed, but shouldn't throw
     expect(typeof result).toBe('string');
@@ -55,10 +65,13 @@ describe('lint_file tool', () => {
   it('handles linter override', async () => {
     writeFileSync(join(testDir, 'test.ts'), 'code\n', 'utf-8');
 
-    const result = await lintFileTool.execute({
-      file_path: join(testDir, 'test.ts'),
-      linter: 'eslint',
-    }, ctx);
+    const result = await lintFileTool.execute(
+      {
+        file_path: join(testDir, 'test.ts'),
+        linter: 'eslint',
+      },
+      ctx
+    );
 
     expect(typeof result).toBe('string');
   });
