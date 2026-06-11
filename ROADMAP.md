@@ -21,46 +21,46 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 | New file creation via @@ -0,0                     | ✅     |
 | 19 tests across 3 test files                      | ✅     |
 
-## Wave S2 — Core Tool Suite 🔄
+## Wave S2 — Core Tool Suite ✅
 
-> IN PROGRESS. Three additional token-saving tools.
+> DONE. Three additional token-saving tools: batch_edit, lint_file, run_tests.
 
 ### S2.1 — `batch_edit` (grep→replace across N files)
 
-- [ ] Search files by regex + file glob
-- [ ] Read matching files, apply replacement
-- [ ] Write back changed files atomically
-- [ ] Return summary: files changed, replacements per file
-- [ ] Preflight: validate regex compiles, glob finds files
-- [ ] Token savings: ~80% (one call vs grep→read→edit×N)
+- [x] Search files by regex + file glob
+- [x] Read matching files, apply replacement
+- [x] Write back changed files atomically
+- [x] Return summary: files changed, replacements per file
+- [x] Preflight: validate regex compiles, glob finds files
+- [x] Token savings: ~80% (one call vs grep→read→edit×N)
 
 ### S2.2 — `lint_file` (run linter, return errors only)
 
-- [ ] Auto-detect linter by file extension
-- [ ] Support: eslint (.ts/.js), phpstan/pint (.php), ruff (.py)
-- [ ] Run linter on single file, parse output
-- [ ] Return: error count, warning count, formatted errors
-- [ ] Token savings: ~60% (no bash→read→parse)
+- [x] Auto-detect linter by file extension
+- [x] Support: eslint (.ts/.js), phpstan/pint (.php), ruff (.py)
+- [x] Run linter on single file, parse output
+- [x] Return: error count, warning count, formatted errors
+- [x] Token savings: ~60% (no bash→read→parse)
 
 ### S2.3 — `run_tests` (run tests, return failures only)
 
-- [ ] Auto-detect test framework from project config
-- [ ] Support: bun test, phpunit, jest/vitest
-- [ ] Run specific file (optional test name filter)
-- [ ] Parse output, return only failures
-- [ ] Token savings: ~50% (no bash→read→parse 2000 lines of output)
+- [x] Auto-detect test framework from project config
+- [x] Support: bun test, phpunit, jest/vitest
+- [x] Run specific file (optional test name filter)
+- [x] Parse output, return only failures
+- [x] Token savings: ~50% (no bash→read→parse 2000 lines of output)
 
 ### Acceptance Criteria (S2)
 
-- [ ] All 3 tools have tool definitions in `src/tools/`
-- [ ] Each tool has tests in `tests/`
-- [ ] Plugin entry registers all 4 tools
-- [ ] `bun test` passes (existing 19 + new tests)
-- [ ] `tsc --noEmit` passes
+- [x] All 3 tools have tool definitions in `src/tools/`
+- [x] Each tool has tests in `tests/`
+- [x] Plugin entry registers all 4 tools
+- [x] `bun test` passes (existing 19 + new tests)
+- [x] `tsc --noEmit` passes
 
-## Wave S3 — Open-Source Readiness
+## Wave S3 — Open-Source Readiness ✅
 
-> Priority: HIGH. Required before public announcement.
+> DONE. README, CONTRIBUTING.md, GUIDELINES.md, issue/PR templates, CI/CD all in place.
 
 ### Tasks
 
@@ -68,35 +68,35 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 
 - [x] Project description
 - [x] Tool reference table
-- [ ] Installation guide
-- [ ] Configuration docs
-- [ ] Requirements
+- [x] Installation guide
+- [x] Configuration docs
+- [x] Requirements
 
 #### S3.2 — CONTRIBUTING.md
 
-- [ ] Full contributing guide following four-opencode-brain pattern
+- [x] Full contributing guide following four-opencode-brain pattern
 
 #### S3.3 — GUIDELINES.md
 
-- [ ] Coding standards and conventions
+- [x] Coding standards and conventions
 
 #### S3.4 — GitHub Templates
 
-- [ ] `.github/ISSUE_TEMPLATE/bug_report.md`
-- [ ] `.github/ISSUE_TEMPLATE/feature_request.md`
-- [ ] `.github/PULL_REQUEST_TEMPLATE.md`
+- [x] `.github/ISSUE_TEMPLATE/bug_report.md`
+- [x] `.github/ISSUE_TEMPLATE/feature_request.md`
+- [x] `.github/PULL_REQUEST_TEMPLATE.md`
 
 #### S3.5 — CI/CD
 
-- [ ] `.github/dependabot.yml`
-- [ ] `.github/workflows/codeql.yml`
+- [x] `.github/dependabot.yml`
+- [x] `.github/workflows/codeql.yml`
 
 ### Acceptance Criteria (S3)
 
-- [ ] README is complete and welcoming
-- [ ] CONTRIBUTING.md covers full workflow
-- [ ] Issue templates guide quality reports
-- [ ] Repository looks professional and discoverable
+- [x] README is complete and welcoming
+- [x] CONTRIBUTING.md covers full workflow
+- [x] Issue templates guide quality reports
+- [x] Repository looks professional and discoverable
 
 ## Wave S4 — Git Intelligence ✅
 
@@ -163,8 +163,8 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 | Wave | Status         |
 | ---- | -------------- |
 | S1   | ✅ Done        |
-| S2   | 🔄 In Progress |
-| S3   | 🔄 In Progress |
+| S2   | ✅ Done        |
+| S3   | ✅ Done        |
 | S4   | ✅ Done        |
 | S5   | ✅ Done        |
 | S6   | ⏳ Planned     |
@@ -172,7 +172,7 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 ## Execution Order
 
 ```
-S1 ✅ → S2 🔄 → S3 🔄 → S4 ✅ → S5 → S6
+S1 ✅ → S2 ✅ → S3 ✅ → S4 ✅ → S5 ✅ → S6 ⏳
 ```
 
-S3 runs in parallel with S2.
+All waves S1-S5 complete. S6 planned.
