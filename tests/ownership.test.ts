@@ -13,7 +13,10 @@ mock.module('../src/lib/git-utils', () => ({
   ...require('../src/lib/git-utils'),
   runGit: runGitMock,
   parseGitBlame: async (filePath: string, cwd?: string) => {
-    const output = await runGitMock(['blame', '--line-porcelain', '--', filePath], cwd ?? process.cwd());
+    const output = await runGitMock(
+      ['blame', '--line-porcelain', '--', filePath],
+      cwd ?? process.cwd()
+    );
     const { parseBlameOutput } = require('../src/lib/git-utils');
     return parseBlameOutput(output);
   },

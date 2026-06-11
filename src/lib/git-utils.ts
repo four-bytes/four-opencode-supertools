@@ -83,12 +83,8 @@ export async function runGit(args: string[], cwd: string, timeout = 30000): Prom
  * @param since Optional date filter (e.g., '90d', '2024-01-01', '6 months ago')
  * @param until Optional upper bound date filter (e.g., '90 days ago')
  */
-export async function parseGitLog(
-  cwd: string,
-  since?: string,
-  until?: string
-): Promise<Commit[]> {
-  const args = ['log', '--numstat', "--format=%H|%an|%aI"];
+export async function parseGitLog(cwd: string, since?: string, until?: string): Promise<Commit[]> {
+  const args = ['log', '--numstat', '--format=%H|%an|%aI'];
 
   if (since) {
     args.push(`--since=${since}`);

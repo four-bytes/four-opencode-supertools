@@ -14,7 +14,10 @@ function detectFramework(directory: string): TestFramework {
     return 'phpunit';
   }
   // Check for Bun project
-  if (existsSync(resolve(directory, 'bunfig.toml')) || existsSync(resolve(directory, 'bun.lockb'))) {
+  if (
+    existsSync(resolve(directory, 'bunfig.toml')) ||
+    existsSync(resolve(directory, 'bun.lockb'))
+  ) {
     return 'bun';
   }
   // Check for package.json → jest/vitest
@@ -31,7 +34,11 @@ function detectFramework(directory: string): TestFramework {
   return 'bun';
 }
 
-function buildTestCommand(framework: TestFramework, testFile: string, filter?: string): { cmd: string[]; timeout: number } {
+function buildTestCommand(
+  framework: TestFramework,
+  testFile: string,
+  filter?: string
+): { cmd: string[]; timeout: number } {
   switch (framework) {
     case 'bun':
       if (filter) {
@@ -40,9 +47,15 @@ function buildTestCommand(framework: TestFramework, testFile: string, filter?: s
       return { cmd: ['bun', 'test', testFile, '--reporter', 'junit'], timeout: 120000 };
     case 'vitest':
       if (filter) {
-        return { cmd: ['bun', 'x', 'vitest', 'run', testFile, '-t', filter, '--reporter=verbose'], timeout: 120000 };
+        return {
+          cmd: ['bun', 'x', 'vitest', 'run', testFile, '-t', filter, '--reporter=verbose'],
+          timeout: 120000,
+        };
       }
-      return { cmd: ['bun', 'x', 'vitest', 'run', testFile, '--reporter=verbose'], timeout: 120000 };
+      return {
+        cmd: ['bun', 'x', 'vitest', 'run', testFile, '--reporter=verbose'],
+        timeout: 120000,
+      };
     case 'jest':
       if (filter) {
         return { cmd: ['bun', 'x', 'jest', testFile, '-t', filter, '--verbose'], timeout: 120000 };
@@ -50,7 +63,10 @@ function buildTestCommand(framework: TestFramework, testFile: string, filter?: s
       return { cmd: ['bun', 'x', 'jest', testFile, '--verbose'], timeout: 120000 };
     case 'phpunit':
       if (filter) {
-        return { cmd: ['php', 'vendor/bin/phpunit', testFile, '--filter', filter, '--no-coverage'], timeout: 120000 };
+        return {
+          cmd: ['php', 'vendor/bin/phpunit', testFile, '--filter', filter, '--no-coverage'],
+          timeout: 120000,
+        };
       }
       return { cmd: ['php', 'vendor/bin/phpunit', testFile, '--no-coverage'], timeout: 120000 };
     default:
@@ -78,7 +94,7 @@ function parseTestOutput(output: string): string {
       const content = block.replace(/<\/?failure[^>]*>/g, '').trim();
       if (content) {
         // Extract the first meaningful lines from each failure
-        const contentLines = content.split('\n').filter(l => l.trim());
+        const contentLines = content.split('\n').filter((l) => l.trim());
         failureDetails.push(contentLines.slice(0, 5).join('\n'));
       }
     }
@@ -95,7 +111,7 @@ function parseTestOutput(output: string): string {
       resultLines.push('\nFailures:');
       failureDetails.forEach((detail, i) => {
         resultLines.push(`\n  Failure ${i + 1}:`);
-        resultLines.push(...detail.split('\n').map(l => `    ${l}`));
+        resultLines.push(...detail.split('\n').map((l) => `    ${l}`));
       });
     }
 
@@ -104,9 +120,11 @@ function parseTestOutput(output: string): string {
 
   // PHPUnit plain output
   if (output.includes('PHPUnit')) {
-    const outputLines = output.split('\n').filter(l => l.trim());
-    const summary = outputLines.find(l => l.includes('Tests:') || l.includes('OK') || l.includes('FAILURES'));
-    const failures = outputLines.filter(l => l.includes('FAIL') || l.includes('Error:'));
+    const outputLines = output.split('\n').filter((l) => l.trim());
+    const summary = outputLines.find(
+      (l) => l.includes('Tests:') || l.includes('OK') || l.includes('FAILURES')
+    );
+    const failures = outputLines.filter((l) => l.includes('FAIL') || l.includes('Error:'));
 
     if (!failures.length) {
       const okLine = summary || 'All tests passed';
@@ -117,7 +135,7 @@ function parseTestOutput(output: string): string {
       summary?.trim() || 'Test results:',
       '',
       'Failures:',
-      ...failures.map(f => `  ${f.trim()}`),
+      ...failures.map((f) => `  ${f.trim()}`),
     ].join('\n');
   }
 
@@ -126,9 +144,13 @@ function parseTestOutput(output: string): string {
   const relevant = allLines.slice(-50);
 
   // Try to find test summary
-  const summaryLine = relevant.find(l =>
-    l.includes('pass') || l.includes('fail') || l.includes('tests') ||
-    l.includes('OK') || l.includes('FAIL')
+  const summaryLine = relevant.find(
+    (l) =>
+      l.includes('pass') ||
+      l.includes('fail') ||
+      l.includes('tests') ||
+      l.includes('OK') ||
+      l.includes('FAIL')
   );
 
   if (summaryLine) {
@@ -150,8 +172,14 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
 
   args: {
     test_file: tool.schema.string().describe('Absolute path to the test file to run'),
-    filter: tool.schema.string().optional().describe('Optional test name pattern to filter (e.g., "should handle errors")'),
-    framework: tool.schema.string().optional().describe('Override auto-detection: "bun", "phpunit", "jest", "vitest", or "auto" (default)'),
+    filter: tool.schema
+      .string()
+      .optional()
+      .describe('Optional test name pattern to filter (e.g., "should handle errors")'),
+    framework: tool.schema
+      .string()
+      .optional()
+      .describe('Override auto-detection: "bun", "phpunit", "jest", "vitest", or "auto" (default)'),
   },
 
   async execute(args, ctx) {
@@ -167,7 +195,8 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
       }
 
       // 2. Determine framework
-      const framework: TestFramework = (frameworkArg as TestFramework) || detectFramework(directory);
+      const framework: TestFramework =
+        (frameworkArg as TestFramework) || detectFramework(directory);
 
       // 3. Build and run command
       const { cmd, timeout } = buildTestCommand(framework, test_file, filter);
@@ -218,7 +247,6 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
       });
 
       return result;
-
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logDebugEvent('run_tests.error', { test_file, error: msg });

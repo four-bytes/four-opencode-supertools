@@ -42,9 +42,11 @@ export function applyHunks(hunks: DiffHunk[], originalContent: string): string {
 /**
  * Generate a summary of what the diff changes.
  */
-export function summarizeChanges(
-  hunks: DiffHunk[]
-): { added: number; removed: number; files: number } {
+export function summarizeChanges(hunks: DiffHunk[]): {
+  added: number;
+  removed: number;
+  files: number;
+} {
   let added = 0;
   let removed = 0;
 

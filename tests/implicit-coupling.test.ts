@@ -37,9 +37,7 @@ describe('computeCoupling', () => {
 
     const results = computeCoupling(commits, 0.5);
     expect(results.length).toBeGreaterThanOrEqual(1);
-    const pair = results.find(
-      (r) => r.files.includes('src/a.ts') && r.files.includes('src/b.ts')
-    );
+    const pair = results.find((r) => r.files.includes('src/a.ts') && r.files.includes('src/b.ts'));
     expect(pair).toBeDefined();
     expect(pair!.coCommits).toBe(2);
     expect(pair!.couplingStrength).toBe(1.0);

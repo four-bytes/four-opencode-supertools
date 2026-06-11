@@ -19,9 +19,7 @@ export const implicitCouplingTool = tool({
     threshold: tool.schema
       .number()
       .describe('Minimum co-commit rate to report (0.0–1.0, default: 0.8)'),
-    since: tool.schema
-      .string()
-      .describe("Only consider commits since date (e.g., '90d', '6m')"),
+    since: tool.schema.string().describe("Only consider commits since date (e.g., '90d', '6m')"),
   },
 
   async execute(args, ctx) {
@@ -119,10 +117,7 @@ export function computeCoupling(commits: Commit[], threshold: number): CouplingR
   const results: CouplingResult[] = [];
   for (const [key, data] of pairCounts) {
     const [fileA, fileB] = key.split('|||') as [string, string];
-    const maxCommits = Math.max(
-      fileTotalCommits.get(fileA) ?? 0,
-      fileTotalCommits.get(fileB) ?? 0
-    );
+    const maxCommits = Math.max(fileTotalCommits.get(fileA) ?? 0, fileTotalCommits.get(fileB) ?? 0);
     if (maxCommits === 0) continue;
 
     const strength = Math.round((data.count / maxCommits) * 1000) / 1000;
