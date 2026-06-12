@@ -1,5 +1,9 @@
 # four-opencode-supertools
 
+[![npm](https://img.shields.io/npm/v/@four-bytes/four-opencode-supertools)](https://www.npmjs.com/package/@four-bytes/four-opencode-supertools)
+[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![bun](https://img.shields.io/badge/runtime-bun-orange)](https://bun.sh)
+
 Token-efficient supertools for opencode agents. Each tool saves significant tokens by replacing multi-step workflows with single, optimized calls.
 
 ## Tools
@@ -26,6 +30,17 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 | **`trend`**             | ~90%          | Curse score trends — files getting more dangerous       |
 | **`pr_risk`**           | ~90%          | Risk assessment of uncommitted changes                  |
 | **`git_log_structured`**| ~50%          | Structured git log with filters                         |
+
+### GitHub PR & GitLab MR Tools
+
+| Tool                    | Token Savings | Description                                             |
+| ----------------------- | ------------- | ------------------------------------------------------- |
+| **`gh_pr_create`**      | ~90%          | Create a GitHub pull request                              |
+| **`gh_pr_status`**      | ~90%          | Check PR mergeability — reviews, CI checks, conflicts   |
+| **`gh_pr_comment`**     | ~90%          | Add a comment to a GitHub pull request                    |
+| **`gitlab_mr_create`**  | ~90%          | Create a GitLab merge request                             |
+| **`gitlab_mr_status`**  | ~90%          | Check GitLab MR status — state, mergeability, CI          |
+| **`gitlab_mr_comment`** | ~90%          | Add a comment to a GitLab merge request                   |
 
 ### `apply_patch`
 
@@ -88,6 +103,8 @@ Add to your `opencode.json`:
 }
 ```
 
+**TUI sidebar:** also register in `~/.config/opencode/tui.json` if using GitLab MR tools.
+
 Restart opencode for the plugin to load.
 
 ## Development
@@ -113,3 +130,8 @@ See [AGENTS.md](AGENTS.md) for code architecture and [ROADMAP.md](ROADMAP.md) fo
 ## License
 
 Apache-2.0 © Four Bytes / Four Flames GmbH & Co. KG
+
+
+---
+
+> If these tools save you tokens, consider leaving a ⭐ on [GitHub](https://github.com/four-bytes/four-opencode-supertools).
