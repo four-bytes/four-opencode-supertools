@@ -146,7 +146,7 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 
 ## Wave S6 — IDE Integration
 
-> Future. LSP-powered tools for smarter code operations.
+> Planned. LSP-powered tools for smarter code operations.
 
 ### Candidates
 
@@ -155,6 +155,83 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 | `lsp_hover`       | Get type info / documentation for symbol |
 | `lsp_references`  | Find all references to symbol            |
 | `lsp_diagnostics` | Get diagnostics for file/project         |
+
+---
+
+## Wave S7 — Search & Patch Tools ⏳
+
+> Planned. Multi-file search tools and PDF generation.
+
+### S7.1 — `grep_patch` (recursive grep + apply patches)
+- [ ] Search directories by regex, apply patches to all matching files
+- [ ] Dry-run mode to preview changes
+- [ ] Token savings: ~85% (vs. grep→read×N→patch×N)
+
+### S7.2 — `grep_filelist` (file-list only output)
+- [ ] Run grep, return only matching file paths (no content lines)
+- [ ] Reduces token output by ~90% for broad searches
+- [ ] Token savings: ~90%
+
+### S7.3 — `md_to_pdf` (Markdown → PDF)
+- [ ] Convert markdown to PDF via pandoc → weasyprint
+- [ ] Four-Flames CSS branding (red #c0392b accents, dark blue #2c3e50 tables)
+- [ ] Support code blocks, tables, headings, unicode bar charts
+
+## Wave S8 — VCS & Release Tools ⏳
+
+> Planned. SVN support, git merge, git release operations.
+
+### S8.1 — SVN support
+- [ ] `svn_status`, `svn_diff`, `svn_log` tools
+- [ ] Token-efficient wrappers matching git tool patterns
+
+### S8.2 — `git_merge` (GitLab + GitHub)
+- [ ] Merge branches via GitLab API + GitHub API
+- [ ] Support merge strategies, squash, rebase
+- [ ] Pre-merge checks (CI, approvals, conflicts)
+
+### S8.3 — `git_release` (create releases)
+- [ ] Create GitHub/GitLab releases with tag, notes, assets
+- [ ] Nightly vs stable release tagging
+- [ ] Structured output with release URL
+
+## Wave S9 — DevOps Tools ⏳
+
+> Planned. Infrastructure-as-code and secrets management.
+
+### S9.1 — SOPS encryption
+- [ ] `sops_encrypt` / `sops_decrypt` tools
+- [ ] Support age, GPG, AWS KMS, GCP KMS
+- [ ] Structured output with key info
+
+### S9.2 — Terraform tools
+- [ ] `terraform_plan`, `terraform_apply`, `terraform_state` tools
+- [ ] Workspace management
+- [ ] Plan summary output (saves ~95% tokens vs raw plan)
+
+### S9.3 — Ansible tools
+- [ ] `ansible_playbook` — execute playbooks with inventory
+- [ ] `ansible_inventory` — list/manage inventory
+- [ ] Structured output with task results
+
+### S9.4 — Helm tools
+- [ ] `helm_install`, `helm_upgrade`, `helm_list`, `helm_uninstall`
+- [ ] Chart repository management
+- [ ] Release status output
+
+### S9.5 — SSH tools (spec later)
+- [ ] SSH login with key/agent support
+- [ ] Jump host / ProxyJump support
+- [ ] Auto-mask sensitive data in command output
+- [ ] Remember CWD across commands (session state)
+
+## Wave S10 — Documentation ⏳
+
+> Planned. README update to match meta-repo standard.
+
+- [ ] Update README.md to follow `README_TEMPLATE.md`
+- [ ] Add config samples for all 18 tools
+- [ ] Add per-tool parameter tables
 
 ---
 
@@ -168,11 +245,15 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 | S4   | ✅ Done        |
 | S5   | ✅ Done        |
 | S6   | ⏳ Planned     |
+| S7   | ⏳ Planned     |
+| S8   | ⏳ Planned     |
+| S9   | ⏳ Planned     |
+| S10  | ⏳ Planned     |
 
 ## Execution Order
 
 ```
-S1 ✅ → S2 ✅ → S3 ✅ → S4 ✅ → S5 ✅ → S6 ⏳
+S1 ✅ → S2 ✅ → S3 ✅ → S4 ✅ → S5 ✅ → S6 ⏳ → S7 ⏳ → S8 ⏳ → S9 ⏳ → S10 ⏳
 ```
 
-All waves S1-S5 complete. S6 planned.
+All waves S1-S5 complete. S6-S10 planned.
