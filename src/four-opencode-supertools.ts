@@ -23,6 +23,8 @@ import { gitLogStructuredTool } from './tools/git-log-structured';
 import { gitlabMrCreateTool } from './tools/gitlab-mr-create';
 import { gitlabMrCommentTool } from './tools/gitlab-mr-comment';
 import { gitlabMrStatusTool } from './tools/gitlab-mr-status';
+import { ghPrCreateTool } from './tools/gh-pr-create';
+import { ghPrCommentTool } from './tools/gh-pr-comment';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -48,6 +50,8 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       gitlab_mr_create: gitlabMrCreateTool,
       gitlab_mr_comment: gitlabMrCommentTool,
       gitlab_mr_status: gitlabMrStatusTool,
+      gh_pr_create: ghPrCreateTool,
+      gh_pr_comment: ghPrCommentTool,
     },
   };
 };
