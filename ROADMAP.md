@@ -185,10 +185,12 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 - [ ] `svn_status`, `svn_diff`, `svn_log` tools
 - [ ] Token-efficient wrappers matching git tool patterns
 
-### S8.2 — `git_merge` (GitLab + GitHub)
-- [ ] Merge branches via GitLab API + GitHub API
-- [ ] Support merge strategies, squash, rebase
-- [ ] Pre-merge checks (CI, approvals, conflicts)
+### S8.2 — GitLab Merge Requests ✅
+- [x] `gitlab_mr_create` — create MR (title, source/target branch, description)
+- [x] `gitlab_mr_comment` — add comment to MR
+- [x] `gitlab_mr_status` — check MR state/mergeability/pipelines or list open MRs
+- [x] GitLab REST API v4 via fetch() (no CLI dependency)
+- [ ] GitHub PR merge tool (pending)
 
 ### S8.3 — `git_release` (create releases)
 - [ ] Create GitHub/GitLab releases with tag, notes, assets
@@ -246,7 +248,7 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 | S5   | ✅ Done        |
 | S6   | ⏳ Planned     |
 | S7   | ⏳ Planned     |
-| S8   | ⏳ Planned     |
+| S8   | 🚧 In Progress |
 | S9   | ⏳ Planned     |
 | S10  | ⏳ Planned     |
 

@@ -20,6 +20,9 @@ import { ghPrStatusTool } from './tools/gh-pr-status';
 import { ghBranchCleanupTool } from './tools/gh-branch-cleanup';
 import { ghReleaseInfoTool } from './tools/gh-release-info';
 import { gitLogStructuredTool } from './tools/git-log-structured';
+import { gitlabMrCreateTool } from './tools/gitlab-mr-create';
+import { gitlabMrCommentTool } from './tools/gitlab-mr-comment';
+import { gitlabMrStatusTool } from './tools/gitlab-mr-status';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -42,6 +45,9 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       gh_branch_cleanup: ghBranchCleanupTool,
       gh_release_info: ghReleaseInfoTool,
       git_log_structured: gitLogStructuredTool,
+      gitlab_mr_create: gitlabMrCreateTool,
+      gitlab_mr_comment: gitlabMrCommentTool,
+      gitlab_mr_status: gitlabMrStatusTool,
     },
   };
 };
