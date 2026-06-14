@@ -21,8 +21,7 @@ export const appendFileTool = tool({
       ),
   },
 
-  async execute(args, ctx) {
-    const cwd = ctx.directory;
+  async execute(args, _ctx) {
     logDebugEvent('append_file.start', { file_path: args.file_path, mode: args.mode });
 
     try {

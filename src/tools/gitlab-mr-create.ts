@@ -24,16 +24,12 @@ export const gitlabMrCreateTool = tool({
       const projectId = await getGitLabProjectId(ctx.directory);
       if (!projectId) return 'Could not determine GitLab project ID from git remote.';
 
-      const result = await gitlabApi(
-        `projects/${projectId}/merge_requests`,
-        'POST',
-        {
-          title,
-          source_branch: sourceBranch,
-          target_branch: targetBranch || 'main',
-          description: description || '',
-        },
-      );
+      const result = await gitlabApi(`projects/${projectId}/merge_requests`, 'POST', {
+        title,
+        source_branch: sourceBranch,
+        target_branch: targetBranch || 'main',
+        description: description || '',
+      });
 
       if (!result.ok) {
         return `Failed to create MR: ${result.error}`;

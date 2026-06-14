@@ -38,7 +38,7 @@ export interface BlameLine {
  * Throws on non-zero exit with stderr message.
  * Handles git-not-installed and not-a-repo errors gracefully.
  */
-export async function runGit(args: string[], cwd: string, timeout = 30000): Promise<string> {
+export async function runGit(args: string[], cwd: string, _timeout = 30000): Promise<string> {
   let proc;
   try {
     proc = Bun.spawn(['git', ...args], {

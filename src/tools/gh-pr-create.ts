@@ -14,7 +14,10 @@ export const ghPrCreateTool = tool({
     base: tool.schema.string().optional().describe('Target branch (default: main)'),
     head: tool.schema.string().optional().describe('Source branch (default: current branch)'),
     draft: tool.schema.boolean().optional().describe('Create as draft PR'),
-    repo: tool.schema.string().optional().describe('GitHub repo in owner/repo format (defaults to current repo)'),
+    repo: tool.schema
+      .string()
+      .optional()
+      .describe('GitHub repo in owner/repo format (defaults to current repo)'),
   },
 
   async execute(args, ctx) {

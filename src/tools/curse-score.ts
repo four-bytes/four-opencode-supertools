@@ -169,7 +169,7 @@ export function computeCurseScores(
 /**
  * Format curse score results as plain text.
  */
-function formatCurseScoreOutput(results: CurseResult[], top: number): string {
+function formatCurseScoreOutput(results: CurseResult[], _top: number): string {
   const lines: string[] = [];
   lines.push(`CURSE SCORE — top ${results.length} files by risk`);
 

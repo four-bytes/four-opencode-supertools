@@ -61,10 +61,8 @@ export function computeCoupling(commits: Commit[], threshold: number): CouplingR
   // Optimization: for repos with >500 changed files, sample top 500 most-changed files
   const MAX_FILES = 500;
   let sampledFiles: Set<string>;
-  let truncated = false;
 
   if (fileCounts.size > MAX_FILES) {
-    truncated = true;
     const sorted = Array.from(fileCounts.entries()).sort((a, b) => b[1] - a[1]);
     sampledFiles = new Set(sorted.slice(0, MAX_FILES).map(([path]) => path));
   } else {
