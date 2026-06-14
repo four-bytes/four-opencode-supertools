@@ -1,6 +1,6 @@
 {
   "name": "@four-bytes/four-opencode-supertools",
-  "version": "0.4.1",
+  "version": "0.2.0",
   "description": "Token-efficient supertools for opencode agents — patch_file via unified diff and more",
   "type": "module",
   "exports": {
@@ -9,7 +9,9 @@
       "import": "./dist/four-opencode-supertools.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/four-bytes/four-opencode-supertools"
