@@ -134,6 +134,46 @@ describe('append_file tool', () => {
     expect(content).toBe('first line\n');
   });
 
+  it('prepends before the last line with after_line=-1 (3-line file)', async () => {
+    const filePath = join(testDir, 'test.txt');
+    writeFileSync(filePath, 'line1\nline2\nline3\n', 'utf-8');
+
+    const result = await appendFileTool.execute(
+      {
+        file_path: filePath,
+        content: 'inserted',
+        mode: 'prepend',
+        after_line: -1,
+      },
+      ctx
+    );
+
+    expect(result).toContain('prepend mode');
+
+    const content = readFileSync(filePath, 'utf-8');
+    expect(content).toBe('line1\nline2\ninserted\nline3\n');
+  });
+
+  it('prepends before the last line with after_line=-1 (2-line file — edge case)', async () => {
+    const filePath = join(testDir, 'test.txt');
+    writeFileSync(filePath, 'line1\nline2\n', 'utf-8');
+
+    const result = await appendFileTool.execute(
+      {
+        file_path: filePath,
+        content: 'inserted',
+        mode: 'prepend',
+        after_line: -1,
+      },
+      ctx
+    );
+
+    expect(result).toContain('prepend mode');
+
+    const content = readFileSync(filePath, 'utf-8');
+    expect(content).toBe('line1\ninserted\nline2\n');
+  });
+
   it('returns error for missing file', async () => {
     const filePath = join(testDir, 'nonexistent.txt');
 

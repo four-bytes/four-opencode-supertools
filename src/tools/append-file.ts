@@ -17,7 +17,7 @@ export const appendFileTool = tool({
       .number()
       .optional()
       .describe(
-        'For prepend mode: insert after this line number (0-based; 0 = before first line, -1 = before last line). Ignored in append mode.'
+        'For prepend mode: insert after this line number (0-based; 0 = before first line, -1 = before last line, -2 = before second-to-last line, etc.). Negative values use Python-style indexing from the end. Ignored in append mode.'
       ),
   },
 
@@ -37,17 +37,35 @@ export const appendFileTool = tool({
         }
       } else if (mode === 'prepend') {
         const lines = content.split('\n');
-        let insertAt = args.after_line ?? 0;
-        // -1 means before the last line
-        if (insertAt === -1) {
-          insertAt = Math.max(0, lines.length - 2);
+        // Normalize: strip trailing empty string from terminal newline so
+        // lines.length reflects the true line count regardless of trailing \n
+        const hasTrailingNewline = lines.length > 1 && lines[lines.length - 1] === '';
+        if (hasTrailingNewline) {
+          lines.pop();
         }
-        // after_line=0 means position 0 (before first line).
-        // after_line=N (N>0) means after line at index N, so position N+1.
-        const insertPos = insertAt === 0 ? 0 : insertAt + 1;
+
+        const rawAfterLine = args.after_line;
+        let insertPos: number;
+        if (rawAfterLine !== undefined && rawAfterLine < 0) {
+          // Negative indexing: Python-like, -1 = before last line,
+          // -2 = before second-to-last, etc.
+          insertPos = Math.max(0, lines.length + rawAfterLine);
+        } else {
+          // Legacy: 0 = before first line (position 0),
+          // N = after line N (position N+1)
+          const insertAt = rawAfterLine ?? 0;
+          insertPos = insertAt === 0 ? 0 : insertAt + 1;
+        }
+
         const before = lines.slice(0, insertPos);
         const after = lines.slice(insertPos);
-        newContent = [...before, args.content, ...after].join('\n');
+        const result = [...before, args.content, ...after];
+
+        // Restore trailing newline if it was present
+        if (hasTrailingNewline) {
+          result.push('');
+        }
+        newContent = result.join('\n');
       } else {
         // Append mode
         newContent = content.endsWith('\n')
