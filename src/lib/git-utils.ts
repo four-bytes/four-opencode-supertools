@@ -49,9 +49,9 @@ export async function runGit(args: string[], cwd: string, _timeout = 30000): Pro
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('No such file') || msg.includes('not found') || msg.includes('ENOENT')) {
-      throw new Error('git is not installed or not found in PATH');
+      throw new Error('git is not installed or not found in PATH', { cause: err });
     }
-    throw new Error(`Failed to spawn git: ${msg}`);
+    throw new Error(`Failed to spawn git: ${msg}`, { cause: err });
   }
 
   const exitCode = await proc.exited;

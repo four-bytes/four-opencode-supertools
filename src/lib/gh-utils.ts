@@ -36,9 +36,11 @@ export async function runGh(args: string[], cwd: string, _timeout = 30000): Prom
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('No such file') || msg.includes('not found') || msg.includes('ENOENT')) {
-      throw new Error('GitHub CLI (gh) is not installed. Install from https://cli.github.com/');
+      throw new Error('GitHub CLI (gh) is not installed. Install from https://cli.github.com/', {
+        cause: err,
+      });
     }
-    throw new Error(`Failed to spawn gh: ${msg}`);
+    throw new Error(`Failed to spawn gh: ${msg}`, { cause: err });
   }
 
   const exitCode = await proc.exited;
@@ -102,7 +104,8 @@ export async function resolveRepo(repo: string | undefined, cwd: string): Promis
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `Could not determine current GitHub repo. Ensure you are in a git repo with a GitHub remote. ${msg}`
+      `Could not determine current GitHub repo. Ensure you are in a git repo with a GitHub remote. ${msg}`,
+      { cause: err }
     );
   }
 }
