@@ -51,24 +51,21 @@ export const ghPrReviewTool = tool({
       const comments = data.comments ?? [];
       const reviews = data.reviews ?? [];
 
-      // Filter out empty-body reviews (e.g. bare APPROVED clicks)
-      const substantiveReviews = reviews.filter((r) => r.body && r.body.trim().length > 0);
-
-      if (comments.length === 0 && substantiveReviews.length === 0) {
+      if (comments.length === 0 && reviews.length === 0) {
         return `No review comments on PR #${pr}.`;
       }
 
       const lines: string[] = [`Review comments for PR #${pr}:`, ''];
 
-      if (substantiveReviews.length > 0) {
+      if (reviews.length > 0) {
         lines.push('## Reviews');
         lines.push('');
-        for (const review of substantiveReviews) {
+        for (const review of reviews) {
           const reviewer = review.author?.login ?? 'unknown';
           const state = review.state ?? 'COMMENTED';
           const ts = review.submittedAt ? ` (${review.submittedAt})` : '';
-          const body =
-            review.body!.length > 500 ? `${review.body!.substring(0, 500)}…` : review.body!;
+          const bodyText = (review.body ?? '').trim() || '(no comment)';
+          const body = bodyText.length > 500 ? `${bodyText.substring(0, 500)}…` : bodyText;
           lines.push(`[${state}] ${reviewer}${ts}:`);
           lines.push(body);
           lines.push('');
@@ -94,7 +91,7 @@ export const ghPrReviewTool = tool({
       logDebugEvent('gh_pr_review.success', {
         pr,
         comments: comments.length,
-        reviews: substantiveReviews.length,
+        reviews: reviews.length,
       });
 
       return lines.join('\n').trimEnd();
