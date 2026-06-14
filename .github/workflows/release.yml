@@ -19,7 +19,7 @@ jobs:
           bun-version: latest
       - run: bun install
       - run: bun run build
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
       - if: ${{ steps.release.outputs.release_created }}
         run: bun publish --provenance --access public
