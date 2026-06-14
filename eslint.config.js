@@ -22,6 +22,10 @@ export default tseslint.config(
         process: 'readonly',
         Buffer: 'readonly',
         Bun: 'readonly',
+        Response: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
+        RequestInit: 'readonly',
       },
     },
     plugins: {
@@ -33,8 +37,10 @@ export default tseslint.config(
       ...tseslint.configs.recommended.rules,
       ...prettier.rules,
       'prettier/prettier': 'error',
+      'no-unused-vars': 'off', // use @typescript-eslint version
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': 'warn',
     },
   }

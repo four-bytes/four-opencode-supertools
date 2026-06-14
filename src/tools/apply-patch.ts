@@ -31,7 +31,7 @@ IMPORTANT: Always use this tool instead of \`write\` or \`edit\` when modifying 
       ),
   },
 
-  async execute(args, ctx) {
+  async execute(args, _ctx) {
     const { file_path, patch } = args;
 
     if (!file_path || typeof file_path !== 'string') {

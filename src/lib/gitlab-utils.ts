@@ -27,7 +27,7 @@ export async function getGitLabProjectId(cwd: string): Promise<string | null> {
     const proc = Bun.spawn(['git', 'remote', 'get-url', 'origin'], { cwd, stdout: 'pipe' });
     const url = (await new Response(proc.stdout).text()).trim();
     // Extract: <EMAIL_1>:group/project.git → group/project
-    const match = url.match(/[:\/]([^\/]+\/[^.]+?)(?:\.git)?$/);
+    const match = url.match(/[/:]([^/]+\/[^.]+?)(?:\.git)?$/);
     if (match) {
       return encodeURIComponent(match[1]);
     }
@@ -41,7 +41,7 @@ export async function getGitLabProjectId(cwd: string): Promise<string | null> {
 export async function gitlabApi(
   path: string,
   method: 'GET' | 'POST' | 'PUT' = 'GET',
-  body?: object,
+  body?: object
 ): Promise<{ ok: boolean; status: number; data: any; error?: string }> {
   const cfg = getGitLabConfig();
   if (!cfg) return { ok: false, status: 0, data: null, error: 'GITLAB_TOKEN not set' };
@@ -53,7 +53,7 @@ export async function gitlabApi(
       method,
       headers: {
         'PRIVATE-TOKEN': cfg.token,
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
       },
     };
@@ -66,7 +66,7 @@ export async function gitlabApi(
       ok: response.ok,
       status: response.status,
       data,
-      error: response.ok ? undefined : (data?.message || `HTTP ${response.status}`),
+      error: response.ok ? undefined : (data as any)?.message || `HTTP ${response.status}`,
     };
   } catch (err) {
     return {

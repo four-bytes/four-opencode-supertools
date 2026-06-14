@@ -25,7 +25,7 @@ export const gitlabMrCommentTool = tool({
       const result = await gitlabApi(
         `projects/${projectId}/merge_requests/${mrIid}/notes`,
         'POST',
-        { body },
+        { body }
       );
 
       if (!result.ok) {

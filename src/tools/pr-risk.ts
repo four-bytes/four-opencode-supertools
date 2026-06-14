@@ -2,7 +2,7 @@
 // Copyright (c) 2025-2026 Four Bytes
 
 import { tool } from '@opencode-ai/plugin';
-import { runGit, parseGitLog, type Commit } from '../lib/git-utils';
+import { runGit, parseGitLog } from '../lib/git-utils';
 import { computeCurseScores } from './curse-score';
 import { computeCoupling } from './implicit-coupling';
 import { logDebugEvent } from '../lib/debug-logger';

@@ -9,7 +9,10 @@ export const gitlabMrStatusTool = tool({
   description: 'Check GitLab merge request status — state, mergeability, approvals, CI pipeline.',
 
   args: {
-    mrIid: tool.schema.number().optional().describe('MR internal ID (!number). If omitted, lists all open MRs for the project.'),
+    mrIid: tool.schema
+      .number()
+      .optional()
+      .describe('MR internal ID (!number). If omitted, lists all open MRs for the project.'),
   },
 
   async execute(args, ctx) {
@@ -23,9 +26,7 @@ export const gitlabMrStatusTool = tool({
 
       if (mrIid) {
         // Single MR
-        const result = await gitlabApi(
-          `projects/${projectId}/merge_requests/${mrIid}`,
-        );
+        const result = await gitlabApi(`projects/${projectId}/merge_requests/${mrIid}`);
 
         if (!result.ok) return `Failed to get MR: ${result.error}`;
 
@@ -42,7 +43,7 @@ export const gitlabMrStatusTool = tool({
       } else {
         // List open MRs
         const result = await gitlabApi(
-          `projects/${projectId}/merge_requests?state=opened&per_page=10`,
+          `projects/${projectId}/merge_requests?state=opened&per_page=10`
         );
 
         if (!result.ok) return `Failed to list MRs: ${result.error}`;
@@ -52,7 +53,9 @@ export const gitlabMrStatusTool = tool({
 
         const lines = [`${mrs.length} open MR(s):`];
         for (const mr of mrs) {
-          lines.push(`  !${mr.iid}: ${mr.title} [${mr.merge_status}] (${mr.source_branch} → ${mr.target_branch})`);
+          lines.push(
+            `  !${mr.iid}: ${mr.title} [${mr.merge_status}] (${mr.source_branch} → ${mr.target_branch})`
+          );
         }
         return lines.join('\n');
       }

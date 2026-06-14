@@ -25,7 +25,7 @@ export interface GhExecResult {
  * Throws on non-zero exit with descriptive error messages.
  * Handles gh-not-installed, not-authenticated, and 404 errors gracefully.
  */
-export async function runGh(args: string[], cwd: string, timeout = 30000): Promise<string> {
+export async function runGh(args: string[], cwd: string, _timeout = 30000): Promise<string> {
   let proc;
   try {
     proc = Bun.spawn(['gh', ...args], {

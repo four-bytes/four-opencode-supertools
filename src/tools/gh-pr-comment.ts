@@ -11,7 +11,10 @@ export const ghPrCommentTool = tool({
   args: {
     pr: tool.schema.number().describe('PR number to comment on'),
     body: tool.schema.string().describe('Comment text (markdown)'),
-    repo: tool.schema.string().optional().describe('GitHub repo in owner/repo format (defaults to current repo)'),
+    repo: tool.schema
+      .string()
+      .optional()
+      .describe('GitHub repo in owner/repo format (defaults to current repo)'),
   },
 
   async execute(args, ctx) {
@@ -23,7 +26,10 @@ export const ghPrCommentTool = tool({
       const resolvedRepo = await resolveRepo(repo, ctx.directory);
       const repoArgs = ['-R', resolvedRepo];
 
-      const output = await runGh(['pr', 'comment', String(pr), ...repoArgs, '--body', body], ctx.directory);
+      const output = await runGh(
+        ['pr', 'comment', String(pr), ...repoArgs, '--body', body],
+        ctx.directory
+      );
 
       logDebugEvent('gh_pr_comment.success', { pr });
       return `✅ Comment added to PR #${pr}. ${output.trim()}`;

@@ -1,6 +1,6 @@
 {
   "name": "@four-bytes/four-opencode-supertools",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Token-efficient supertools for opencode agents — patch_file via unified diff and more",
   "type": "module",
   "exports": {
@@ -25,6 +25,7 @@
   "scripts": {
     "build": "bun build ./src/four-opencode-supertools.ts --outdir dist --target bun --format esm --external @opencode-ai/plugin",
     "test": "bun test",
+    "lint": "eslint src/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
