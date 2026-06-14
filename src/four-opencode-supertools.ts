@@ -25,6 +25,7 @@ import { gitlabMrCommentTool } from './tools/gitlab-mr-comment';
 import { gitlabMrStatusTool } from './tools/gitlab-mr-status';
 import { ghPrCreateTool } from './tools/gh-pr-create';
 import { ghPrCommentTool } from './tools/gh-pr-comment';
+import { ghPrReviewTool } from './tools/gh-pr-review';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -52,6 +53,7 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       gitlab_mr_status: gitlabMrStatusTool,
       gh_pr_create: ghPrCreateTool,
       gh_pr_comment: ghPrCommentTool,
+      gh_pr_review: ghPrReviewTool,
     },
   };
 };
