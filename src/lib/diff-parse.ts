@@ -29,10 +29,10 @@ export function parseUnifiedDiff(patchText: string): ParsedDiff {
 
   let currentHunk: DiffHunk | null = null;
   let hunkLines: DiffLine[] = [];
-  let oldLine = 0;
-  let newLine = 0;
-  let oldCount = 0;
-  let newCount = 0;
+  let oldLine: number;
+  let newLine: number;
+  let oldCount: number;
+  let newCount: number;
 
   for (const line of lines) {
     const hunkMatch = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/);
