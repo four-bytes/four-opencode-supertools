@@ -66,7 +66,7 @@ export async function gitlabApi(
       ok: response.ok,
       status: response.status,
       data,
-      error: response.ok ? undefined : (data?.message || `HTTP ${response.status}`),
+      error: response.ok ? undefined : ((data as any)?.message || `HTTP ${response.status}`),
     };
   } catch (err) {
     return {
