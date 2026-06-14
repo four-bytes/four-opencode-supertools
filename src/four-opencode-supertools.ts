@@ -27,6 +27,7 @@ import { ghPrCreateTool } from './tools/gh-pr-create';
 import { ghPrCommentTool } from './tools/gh-pr-comment';
 import { ghPrReviewTool } from './tools/gh-pr-review';
 import { appendFileTool } from './tools/append-file';
+import { ghBotReviewTool } from './tools/gh-bot-review';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -56,6 +57,7 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       gh_pr_comment: ghPrCommentTool,
       gh_pr_review: ghPrReviewTool,
       append_file: appendFileTool,
+      gh_bot_review: ghBotReviewTool,
     },
   };
 };
