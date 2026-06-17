@@ -26,9 +26,11 @@ export default tseslint.config(
         fetch: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
-        RequestInit: 'readonly',
         TextDecoder: 'readonly',
+        TextEncoder: 'readonly',
+        RequestInit: 'readonly',
         Timer: 'readonly',
+        Uint8Array: 'readonly',
       },
     },
     plugins: {
