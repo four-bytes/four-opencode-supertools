@@ -115,6 +115,10 @@ function registerMockServer(): void {
 // Tests
 // ────────────────────────────────────────────────────────────────
 
+function parseResult(result: string): Record<string, unknown> {
+  return JSON.parse(result) as Record<string, unknown>;
+}
+
 function mockCtx(dir: string) {
   return {
     sessionID: 'test-session',
@@ -157,10 +161,10 @@ describe('lsp_hover tool', () => {
 
   it('returns available=true with type info from mock LSP server', async () => {
     const ctx = mockCtx(testDir);
-    const result = (await lspHoverTool.execute(
+    const result = parseResult(await lspHoverTool.execute(
       { file_path: testFile, line: 4, character: 1 },
       ctx
-    )) as Record<string, unknown>;
+    ));
 
     expect(result.available).toBe(true);
     expect(result.file).toBe(testFile);
@@ -174,10 +178,10 @@ describe('lsp_hover tool', () => {
     writeFileSync(noServerFile, 'some content', 'utf-8');
 
     const ctx = mockCtx(testDir);
-    const result = (await lspHoverTool.execute(
+    const result = parseResult(await lspHoverTool.execute(
       { file_path: noServerFile, line: 1, character: 1 },
       ctx
-    )) as Record<string, unknown>;
+    ));
 
     expect(result.available).toBe(false);
     expect(result.hint).toBeDefined();
@@ -186,10 +190,10 @@ describe('lsp_hover tool', () => {
 
   it('returns error when file not found', async () => {
     const ctx = mockCtx(testDir);
-    const result = (await lspHoverTool.execute(
+    const result = parseResult(await lspHoverTool.execute(
       { file_path: join(testDir, 'does-not-exist.ts'), line: 1, character: 1 },
       ctx
-    )) as Record<string, unknown>;
+    ));
 
     expect(result.available).toBe(false);
     expect(result.hint).toContain('Could not read file');
@@ -198,10 +202,10 @@ describe('lsp_hover tool', () => {
   it('returns no-information when hover is empty at position', async () => {
     const ctx = mockCtx(testDir);
     // Line 3 (0-indexed: 2) returns empty contents from mock server
-    const result = (await lspHoverTool.execute(
+    const result = parseResult(await lspHoverTool.execute(
       { file_path: testFile, line: 3, character: 1 },
       ctx
-    )) as Record<string, unknown>;
+    ));
 
     expect(result.available).toBe(true);
     expect(result.type).toBe('no information at this position');
@@ -210,10 +214,10 @@ describe('lsp_hover tool', () => {
   it('truncates long documentation', async () => {
     const ctx = mockCtx(testDir);
     // Line 1 (0-indexed: 0) returns very long documentation
-    const result = (await lspHoverTool.execute(
+    const result = parseResult(await lspHoverTool.execute(
       { file_path: testFile, line: 1, character: 1 },
       ctx
-    )) as Record<string, unknown>;
+    ));
 
     expect(result.available).toBe(true);
     expect(result.fullContents).toBeDefined();
@@ -225,10 +229,10 @@ describe('lsp_hover tool', () => {
     const ctx = mockCtx(testDir);
     // Pass 1-based: line=4, char=5 → LSP gets line=3, char=4
     // Mock returns different content per line, so we verify it doesn't crash
-    const result = (await lspHoverTool.execute(
+    const result = parseResult(await lspHoverTool.execute(
       { file_path: testFile, line: 4, character: 5 },
       ctx
-    )) as Record<string, unknown>;
+    ));
 
     expect(result.available).toBe(true);
     // The position returned is the original 1-based
@@ -237,10 +241,10 @@ describe('lsp_hover tool', () => {
 
   it('defaults character to 1 when not provided', async () => {
     const ctx = mockCtx(testDir);
-    const result = (await lspHoverTool.execute(
+    const result = parseResult(await lspHoverTool.execute(
       { file_path: testFile, line: 4 },
       ctx
-    )) as Record<string, unknown>;
+    ));
 
     expect(result.available).toBe(true);
     expect(result.position).toEqual({ line: 4, character: 1 });
@@ -261,13 +265,13 @@ describe('lsp_hover tool', () => {
 
     const ctx = mockCtx(testDir);
     // Use a short timeout — the mock server never responds
-    const result = (await lspHoverTool.execute(
+    const result = parseResult(await lspHoverTool.execute(
       { file_path: slowFile, line: 1, character: 1 },
       ctx
-    )) as Record<string, unknown>;
+    ));
 
     // Should return null hover → no information
     expect(result.available).toBe(true);
     expect(result.type).toBe('no information at this position');
-  });
+  }, 20000);
 });

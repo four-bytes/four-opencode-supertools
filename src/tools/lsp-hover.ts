@@ -67,8 +67,6 @@ export const lspHoverTool = tool({
   description:
     'Get type information and documentation for a symbol at a position via LSP. Saves ~95% tokens vs reading source files.',
 
-  permission: 'read',
-
   args: {
     file_path: tool.schema.string().describe('Absolute path to the file'),
     line: tool.schema
@@ -96,21 +94,21 @@ export const lspHoverTool = tool({
     if (!resolved) {
       const config = registry.findConfig(file_path);
       if (!config) {
-        return {
+        return JSON.stringify({
           available: false,
           file: file_path,
           position: { line, character },
           hint: `No LSP server configured for this file type. Add a server config for the file extension.`,
-        } satisfies LspHoverOutput;
+        } satisfies LspHoverOutput);
       }
 
-      return {
+      return JSON.stringify({
         available: false,
         file: file_path,
         position: { line, character },
         hint: `LSP server "${config.command[0]}" is not installed.`,
         suggestion: config.installHint ?? `Install the language server for ${config.languageId}`,
-      } satisfies LspHoverOutput;
+      } satisfies LspHoverOutput);
     }
 
     const { client, languageId } = resolved;
@@ -121,12 +119,12 @@ export const lspHoverTool = tool({
     try {
       fileText = await Bun.file(file_path).text();
     } catch {
-      return {
+      return JSON.stringify({
         available: false,
         file: file_path,
         position: { line, character },
         hint: `Could not read file: ${file_path}`,
-      } satisfies LspHoverOutput;
+      } satisfies LspHoverOutput);
     }
 
     // Ensure document is open (async to wait for LSP handshake)
@@ -136,12 +134,12 @@ export const lspHoverTool = tool({
     const hoverResult = await client.hover(uri, lspLine, lspChar);
 
     if (!hoverResult || !hoverResult.contents || hoverResult.contents.trim().length === 0) {
-      return {
+      return JSON.stringify({
         available: true,
         file: file_path,
         position: { line, character },
         type: 'no information at this position',
-      } satisfies LspHoverOutput;
+      } satisfies LspHoverOutput);
     }
 
     const fullContents = hoverResult.contents;
@@ -160,6 +158,6 @@ export const lspHoverTool = tool({
 
     logDebugEvent('lsp_hover.complete', { file_path, line, character, hasType: !!type });
 
-    return output;
+    return JSON.stringify(output);
   },
 });
