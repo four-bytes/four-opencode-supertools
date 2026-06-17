@@ -14,6 +14,7 @@ import { researchTool } from './tools/research';
 import { solutionConfidenceTool } from './tools/solution-confidence';
 
 import { lspReferencesTool } from './tools/lsp-references';
+import { lspHoverTool } from './tools/lsp-hover';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -29,6 +30,7 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       research: researchTool,
       solution_confidence: solutionConfidenceTool,
       lsp_references: lspReferencesTool,
+      lsp_hover: lspHoverTool,
     },
   };
 };
