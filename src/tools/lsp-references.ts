@@ -31,8 +31,6 @@ export const lspReferencesTool = tool({
   description:
     'Find all references to a symbol at a position via LSP. Saves ~90% tokens vs grep + manual tracing.',
 
-  permission: 'read',
-
   args: {
     file_path: tool.schema.string().describe('Absolute path to file'),
     line: tool.schema
@@ -65,7 +63,7 @@ export const lspReferencesTool = tool({
     if (!resolved) {
       const config = registry.findConfig(file_path);
       if (!config) {
-        return {
+        return JSON.stringify({
           available: false,
           file: file_path,
           position: { line, character },
@@ -73,10 +71,10 @@ export const lspReferencesTool = tool({
           references: [],
           truncated: false,
           hint: `No LSP server configured for this file type. Add a server config for the file extension.`,
-        } satisfies LspReferencesOutput;
+        } satisfies LspReferencesOutput);
       }
 
-      return {
+      return JSON.stringify({
         available: false,
         file: file_path,
         position: { line, character },
@@ -84,7 +82,7 @@ export const lspReferencesTool = tool({
         references: [],
         truncated: false,
         hint: `LSP server "${config.command[0]}" is not installed.`,
-      } satisfies LspReferencesOutput;
+      } satisfies LspReferencesOutput);
     }
 
     const { client, languageId } = resolved;
@@ -95,7 +93,7 @@ export const lspReferencesTool = tool({
     try {
       fileText = await Bun.file(file_path).text();
     } catch {
-      return {
+      return JSON.stringify({
         available: false,
         file: file_path,
         position: { line, character },
@@ -103,7 +101,7 @@ export const lspReferencesTool = tool({
         references: [],
         truncated: false,
         hint: `Could not read file: ${file_path}`,
-      } satisfies LspReferencesOutput;
+      } satisfies LspReferencesOutput);
     }
 
     // Ensure document is open (async to wait for LSP handshake)
@@ -143,6 +141,6 @@ export const lspReferencesTool = tool({
       output.hint = `Only showing ${max_results} of ${rawReferences.length} references. …and ${remaining} more.`;
     }
 
-    return output;
+    return JSON.stringify(output);
   },
 });

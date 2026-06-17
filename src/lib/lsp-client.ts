@@ -372,7 +372,8 @@ export class LspClient {
 
     const json = JSON.stringify(message);
     const content = `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`;
-    this.proc.stdin.write(content);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (this.proc.stdin as any).write(content);
   }
 
   // ── Read Loop ──────────────────────────────────────────────
@@ -398,7 +399,8 @@ export class LspClient {
   private async readLoop(): Promise<void> {
     if (!this.proc?.stdout) return;
 
-    const reader = this.proc.stdout.getReader();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const reader = (this.proc.stdout as any).getReader();
 
     try {
       while (true) {

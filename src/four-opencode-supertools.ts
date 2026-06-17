@@ -13,9 +13,7 @@ import { fileTreeTool } from './tools/file-tree';
 import { researchTool } from './tools/research';
 import { solutionConfidenceTool } from './tools/solution-confidence';
 import { ghBotReviewTool } from './tools/gh-bot-review';
-import { lspHoverTool } from './tools/lsp-hover';
 import { lspReferencesTool } from './tools/lsp-references';
-import { lspDiagnosticsTool } from './tools/lsp-diagnostics';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -31,9 +29,7 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       research: researchTool,
       solution_confidence: solutionConfidenceTool,
       gh_bot_review: ghBotReviewTool,
-      lsp_hover: lspHoverTool,
       lsp_references: lspReferencesTool,
-      lsp_diagnostics: lspDiagnosticsTool,
     },
   };
 };
