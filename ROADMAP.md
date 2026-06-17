@@ -146,15 +146,17 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 
 ## Wave S6 — IDE Integration
 
-> Planned. LSP-powered tools for smarter code operations.
+> In progress. LSP-powered tools for smarter code operations.
 
 ### Candidates
 
-| Tool              | Description                              |
-| ----------------- | ---------------------------------------- |
-| `lsp_hover`       | Get type info / documentation for symbol |
-| `lsp_references`  | Find all references to symbol            |
-| `lsp_diagnostics` | Get diagnostics for file/project         |
+| Tool              | Description                              | Status      |
+| ----------------- | ---------------------------------------- | ----------- |
+| `lsp_hover`       | Get type info / documentation for symbol | 🚧 WIP     |
+| `lsp_references`  | Find all references to symbol            | 🚧 In PR   |
+| `lsp_diagnostics` | Get diagnostics for file/project         | 🚧 WIP     |
+
+**Note:** All S6 tools depend on the `LspClient` library (`src/lib/lsp-client.ts`) and `LspRegistry` (`src/lib/lsp-registry.ts`). The shared lib is in PR #29 (feat/28-lsp-client merged). References tool in PR #33. Hover + diagnostics pending PR.
 
 ---
 
@@ -246,7 +248,7 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 | S3   | ✅ Done        |
 | S4   | ✅ Done        |
 | S5   | ✅ Done        |
-| S6   | ⏳ Planned     |
+| S6   | 🚧 In Progress |
 | S7   | ⏳ Planned     |
 | S8   | 🚧 In Progress |
 | S9   | ⏳ Planned     |
@@ -255,7 +257,7 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 ## Execution Order
 
 ```
-S1 ✅ → S2 ✅ → S3 ✅ → S4 ✅ → S5 ✅ → S6 ⏳ → S7 ⏳ → S8 ⏳ → S9 ⏳ → S10 ⏳
+S1 ✅ → S2 ✅ → S3 ✅ → S4 ✅ → S5 ✅ → S6 🚧 → S7 ⏳ → S8 🚧 → S9 ⏳ → S10 ⏳
 ```
 
-All waves S1-S5 complete. S6-S10 planned.
+All waves S1-S5 complete. S6 in progress, S8 in progress, S7/S9/S10 planned.
