@@ -167,7 +167,7 @@ describe('LspClient — JSON-RPC Framing', () => {
   });
 
   it('returns empty diagnostics when no publishDiagnostics received', () => {
-    const diags = client.diagnostics('file:///test.ts');
+    const diags = client.getDiagnostics('file:///test.ts');
     expect(diags).toBeArray();
     expect(diags.length).toBe(0);
   });
