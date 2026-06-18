@@ -1,7 +1,7 @@
 # four-opencode-supertools — Evolution Roadmap
 
 > ⚠️ This roadmap is aligned with the canonical meta-repo roadmap at `four-opencode-plugins/ROADMAP.md`. In case of conflict, the meta-repo takes precedence.
-
+>
 > Token-efficient supertools for opencode agents. Save tokens, ship faster.
 
 ## Wave S1 — `apply_patch` ✅
