@@ -6,6 +6,12 @@ import { batchEditTool } from './tools/batch-edit';
 import { lintFileTool } from './tools/lint-file';
 import { runTestsTool } from './tools/run-tests';
 import { appendFileTool } from './tools/append-file';
+import { smartEditTool } from './tools/smart-edit';
+import { smartPatchTool } from './tools/smart-patch';
+import { batchPatchTool } from './tools/batch-patch';
+import { fileTreeTool } from './tools/file-tree';
+import { researchTool } from './tools/research';
+import { solutionConfidenceTool } from './tools/solution-confidence';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -14,6 +20,12 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       lint_file: lintFileTool,
       run_tests: runTestsTool,
       append_file: appendFileTool,
+      smart_edit: smartEditTool,
+      smart_patch: smartPatchTool,
+      batch_patch: batchPatchTool,
+      file_tree: fileTreeTool,
+      research: researchTool,
+      solution_confidence: solutionConfidenceTool,
     },
   };
 };
