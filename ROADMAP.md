@@ -1,14 +1,9 @@
 # four-opencode-supertools — Evolution Roadmap
 
+> ⚠️ This roadmap is aligned with the canonical meta-repo roadmap at `four-opencode-plugins/ROADMAP.md`. In case of conflict, the meta-repo takes precedence.
+>
 > Token-efficient supertools for opencode agents. Save tokens, ship faster.
 
-## Wave Ordering
-
-```
-S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source readiness) → S4 (git intelligence) → S5 (smart_read + advanced tools) → S6 (IDE integration)
-```
-S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source readiness) → S4 (git intelligence) → S5 (github_ops) → S6 (IDE integration)
-```
 ## Wave S1 — `apply_patch` ✅
 
 > DONE. Unified diff patch application saving ~90% tokens vs full-file write.
@@ -20,6 +15,8 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 | Context validation (preflight mismatch detection) | ✅     |
 | New file creation via @@ -0,0                     | ✅     |
 | 19 tests across 3 test files                      | ✅     |
+
+> **Note:** `apply_patch` is kept in supertools for now. The native opencode `patch` tool is equivalent — supertools will deprecate this wrapper once opencode ships the native tool universally.
 
 ## Wave S2 — Core Tool Suite ✅
 
@@ -98,57 +95,130 @@ S1 (apply_patch) → S2 (batch_edit + lint_file + run_tests) → S3 (open-source
 - [x] Issue templates guide quality reports
 - [x] Repository looks professional and discoverable
 
-## Wave S4 — Git Intelligence ✅
+---
 
-> DONE. Five git-history risk analytics tools. Surface hidden risks, knowledge silos, and co-change dependencies.
+## Wave S4 — Git Extraction ⏳
 
-| Tool                | Token Savings | Description                                  |
-| ------------------- | ------------- | -------------------------------------------- |
-| `curse_score`       | ~80%          | Rank files by risk via curse score algorithm |
-| `bus_factor`        | ~80%          | Ownership concentration per directory        |
-| `implicit_coupling` | ~85%          | Hidden co-change dependencies                |
-| `ownership`         | ~80%          | Author breakdown per file/directory          |
-| `blast_radius`      | ~85%          | Impact analysis — what might break?          |
-| `git_diff`          | ~90%          | Get structured git diff output               |
-| `trend`             | ~90%          | Curse score trends — files getting worse     |
-| `pr_risk`           | ~90%          | Risk assessment of uncommitted changes       |
-| `git_log_structured`| ~50%          | Structured git log with filters              |
+> **Migrating to `four-opencode-git`.** All git/GitHub/GitLab tools are being extracted into the new standalone `four-opencode-git` plugin. After migration, supertools retains only lean file/code/research tools. See meta-repo ROADMAP.md Wave G for full plan.
 
-### Tasks
+### Tools Moving to `four-opencode-git`
 
-- [x] `curse_score` — changes × author chaos × recency × churn acceleration
-- [x] `bus_factor` — git blame-based directory ownership concentration
-- [x] `implicit_coupling` — co-commit pair detection via git log --numstat
-- [x] `ownership` — per-file/per-directory author line count breakdown
-- [x] `blast_radius` — coupled files + author-related impact analysis
-- [x] `git-runner` — safe git subprocess spawning with error handling
-- [x] `git-log-parser` — structured commit + file change parsing
-- [x] `git-blame-parser` — porcelain blame output parsing
-- [x] `git_diff` — structured git diff output (staged, file, between refs)
-- [x] `trend` — curse score trend analysis comparing two time windows
-- [x] `pr_risk` — uncommitted change risk assessment (curse + coupling + bus factor)
-- [x] `git_log_structured` — structured git log with author/date/file filters
-- [x] 30 tests in `tests/git-tools.test.ts` + `tests/git-diff.test.ts`
+All 19 tools below will be migrated to `four-opencode-git` (Wave G in meta-repo):
 
-## Wave S5 — GitHub Ops ✅
+| Tool | Description | Meta-repo Wave G |
+| --- | --- | --- |
+| `git_diff` | Structured git diff output (staged, file, between refs) | G1 |
+| `git_log_structured` | Structured git log with author/date/file filters | G1 |
+| `curse_score` | Rank files by risk via curse score algorithm | G1 → `git_analyze` |
+| `bus_factor` | Ownership concentration per directory | G1 → `git_analyze` |
+| `implicit_coupling` | Hidden co-change dependencies | G1 → `git_analyze` |
+| `ownership` | Author breakdown per file/directory | G1 → `git_analyze` |
+| `blast_radius` | Impact analysis — what might break? | G1 → `git_analyze` |
+| `trend` | Curse score trend analysis | G1 → `git_analyze` |
+| `pr_risk` | Risk assessment of uncommitted changes | G1 → `git_analyze` |
+| `gh_pr_create` | Create GitHub pull request | G1 |
+| `gh_pr_comment` | Add comment to PR | G1 |
+| `gh_pr_review` | Fetch PR review comments and state | G1 |
+| `gh_pr_status` | PR mergeability check (reviews, CI, conflicts) | G1 |
+| `gh_issue_list` | List issues with filtering (label, assignee, state) | G1 |
+| `gh_issue_close` | Close issue with zombie detection + optional comment | G1 |
+| `gh_branch_cleanup` | Find + delete stale merged remote branches | G1 |
+| `gh_release_info` | Structured release metadata | G1 |
+| `gh_bot_review` | Parse AI bot reviews on PR (CodeRabbit, cubic-dev) | G1 |
+| `gitlab_mr_create` | Create GitLab merge request | G1 |
+| `gitlab_mr_comment` | Add comment to MR | G1 |
+| `gitlab_mr_status` | Check MR state/mergeability/pipelines | G1 |
 
-> DONE. GitHub CLI wrapper tools. Wrap `gh` CLI commands as structured JSON-output tools. Saves ~90% tokens vs. bash→read→parse. Replaces reliance on the `@github` subagent for common ops.
+### New `git_analyze` Dispatcher (replaces 7 individual tools)
 
-| Tool                | Token Savings | Description                                              |
-| ------------------- | ------------- | -------------------------------------------------------- |
-| `gh_issue_list`     | ~90%          | List open issues with filtering (label, assignee, state) |
-| `gh_issue_close`    | ~90%          | Close issue with zombie detection + optional comment     |
-| `gh_pr_status`      | ~90%          | PR mergeability check (reviews, CI, conflicts)           |
-| `gh_branch_cleanup` | ~90%          | Find + delete stale merged remote branches               |
-| `gh_release_info`   | ~90%          | Structured release metadata (version, tag, notes, assets)|
+> Wave G introduces `git_analyze(metric, args)` — a single dispatcher that collapses 7 analysis tools into 1 schema. Reduces tool schema overhead per request while keeping all functionality accessible.
 
-Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/four-opencode-plugins/blob/main/ROADMAP.md)
+| Routed metric | Original tool | Args |
+| --- | --- | --- |
+| `curse_score` | `curse_score` | `file?, since?` |
+| `bus_factor` | `bus_factor` | `path?, since?` |
+| `implicit_coupling` | `implicit_coupling` | `threshold?, since?` |
+| `ownership` | `ownership` | `path?` |
+| `blast_radius` | `blast_radius` | `file?, since?` |
+| `trend` | `trend` | `top?, window_days?` |
+| `pr_risk` | `pr_risk` | — |
 
-## Wave S6 — IDE Integration
+**Dev:** `src/tools/git-analyze.ts` in `four-opencode-git`. Import execute functions from each analysis module. Route by `metric` string. Pass remainder of args to routed function.
 
-> In progress. LSP-powered tools for smarter code operations.
+### Tools Remaining in Supertools
 
-### Candidates
+After extraction, supertools keeps these 4 tools:
+
+| Tool | Reason |
+| --- | --- |
+| `batch_edit` | grep→replace across N files, no equivalent in opencode core |
+| `lint_file` | Linter wrapper with structured output, no opencode equivalent |
+| `run_tests` | Test runner with failure parsing, no opencode equivalent |
+| `append_file` | Append/prepend to files, distinct from patch/edit |
+
+### Removal
+
+| Tool | Reason |
+| --- | --- |
+| `patch_file` | **DELETE** — identical to native opencode `patch` tool, pure duplication |
+
+### Source
+
+See [meta-repo ROADMAP.md — Wave G](https://github.com/four-bytes/four-opencode-plugins/blob/main/ROADMAP.md#wave-g--git-plugin-new).
+
+---
+
+## Wave S5 — Supertools Redesign ⏳
+
+> **New tools after git extraction.** Supertools becomes a lean file/code/research toolkit. See meta-repo ROADMAP.md Wave S for full plan.
+
+### S5.1 — `smart_edit` — fuzzy string replace
+
+- **Gap:** native `edit` fails on whitespace/indentation variance; `patch` needs exact line numbers
+- **Args:** `file_path: string, old_string: string, new_string: string, allow_multiple?: boolean`
+- **Logic:** exact match first → normalized whitespace retry → if `allow_multiple=false` and >1 match: error with line numbers
+- **Returns:** `{ changed: true, line: number, preview: string }` | `{ error: string, candidates?: number[] }`
+
+### S5.2 — `smart_patch` — context-anchored patch (ignores line numbers)
+
+- **Gap:** native `patch` rejects if `@@ -N @@` line number is off by even a few lines — agents miscounting or working from stale reads causes constant failures
+- **Args:** `file_path: string, patch: string, fuzz?: number (default 3)`
+- **Logic:** parse unified diff; ignore `@@ -N @@` line numbers; scan file for best context match; accept if mismatches ≤ `fuzz`; apply hunk at found position
+- **Returns:** `{ applied: true, hunks: number, offsets: number[] }` | `{ error: string, hunk: number, context: string[] }`
+
+### S5.3 — `batch_patch` — multi-file patch in one call
+
+- **Gap:** native `patch` is single-file; coordinated multi-file changes require N round trips
+- **Args:** `patches: Array<{ file_path: string, patch: string }>, atomic?: boolean`
+- **Logic:** parse all patches (fail-fast); if `atomic=true`: snapshot → apply → rollback on failure; if `atomic=false`: best-effort
+- **Returns:** `{ applied: string[], failed: Array<{ file: string, error: string }> }` | adds `rolled_back: string[]` on atomic rollback
+
+### S5.4 — `file_tree` — structured directory listing
+
+- **Gap:** agents use `bash ls -R` or `find` — verbose, hard to parse, no size info
+- **Args:** `path: string, depth?: number (default 3), filter?: string (glob), include_hidden?: boolean (default false)`
+- **Logic:** walk recursively to depth; skip `.git`, `node_modules`, `vendor` unless `include_hidden=true`; apply glob filter; respect `.gitignore`
+- **Returns:** `{ name: string, type: "file"|"dir", size?: number, children?: [...] }[]`
+
+### S5.5 — `research` — brain + web in one call
+
+- **Gap:** agents do `brain_search` + separate `websearch` + `webfetch` = 3+ round trips
+- **Args:** `queries: string[], scope?: "brain" | "web" | "both" (default "both")`
+- **Logic:** run in parallel per query: brain via `ctx.callTool("brain_search", { query })`, web via native websearch; merge + deduplicate
+- **Returns:** `Array<{ query: string, brain: Result[], web: Result[] }>`
+
+### S5.6 — `solution_confidence` — verification scoring
+
+- **Gap:** no structured way to verify a fix beyond "tests pass"
+- **Args:** `description: string, evidence?: string[]`
+- **Logic:** `run_tests` (detect test files via glob on description keywords) → `brain_search` for matching KB patterns (score > 0.7 + `review_state === "accepted"`) → `pr_risk` on staged changes if git available → weighted score: tests(0.4) + kb_match(0.3) + coverage(0.3)
+- **Returns:** `{ confidence: number, verdict: "likely_fixed" | "uncertain" | "band_aid", risks: string[], checks: { tests: bool|null, kb_match: bool|null, coverage: bool|null } }`
+
+---
+
+## Wave S6 — IDE Integration 🚧
+
+> LSP-powered tools for smarter code operations.
 
 | Tool              | Description                              | Status      |
 | ----------------- | ---------------------------------------- | ----------- |
@@ -179,62 +249,46 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 - [ ] Four-Flames CSS branding (red #c0392b accents, dark blue #2c3e50 tables)
 - [ ] Support code blocks, tables, headings, unicode bar charts
 
-## Wave S8 — VCS & Release Tools ⏳
+---
 
-> Planned. SVN support, git merge, git release operations.
-
-### S8.1 — SVN support
-- [ ] `svn_status`, `svn_diff`, `svn_log` tools
-- [ ] Token-efficient wrappers matching git tool patterns
-
-### S8.2 — GitLab Merge Requests ✅
-- [x] `gitlab_mr_create` — create MR (title, source/target branch, description)
-- [x] `gitlab_mr_comment` — add comment to MR
-- [x] `gitlab_mr_status` — check MR state/mergeability/pipelines or list open MRs
-- [x] GitLab REST API v4 via fetch() (no CLI dependency)
-- [ ] GitHub PR merge tool (pending)
-
-### S8.3 — `git_release` (create releases)
-- [ ] Create GitHub/GitLab releases with tag, notes, assets
-- [ ] Nightly vs stable release tagging
-- [ ] Structured output with release URL
-
-## Wave S9 — DevOps Tools ⏳
+## Wave S8 — DevOps Tools ⏳
 
 > Planned. Infrastructure-as-code and secrets management.
 
-### S9.1 — SOPS encryption
+### S8.1 — SOPS encryption
 - [ ] `sops_encrypt` / `sops_decrypt` tools
 - [ ] Support age, GPG, AWS KMS, GCP KMS
 - [ ] Structured output with key info
 
-### S9.2 — Terraform tools
+### S8.2 — Terraform tools
 - [ ] `terraform_plan`, `terraform_apply`, `terraform_state` tools
 - [ ] Workspace management
 - [ ] Plan summary output (saves ~95% tokens vs raw plan)
 
-### S9.3 — Ansible tools
+### S8.3 — Ansible tools
 - [ ] `ansible_playbook` — execute playbooks with inventory
 - [ ] `ansible_inventory` — list/manage inventory
 - [ ] Structured output with task results
 
-### S9.4 — Helm tools
+### S8.4 — Helm tools
 - [ ] `helm_install`, `helm_upgrade`, `helm_list`, `helm_uninstall`
 - [ ] Chart repository management
 - [ ] Release status output
 
-### S9.5 — SSH tools (spec later)
+### S8.5 — SSH tools (spec later)
 - [ ] SSH login with key/agent support
 - [ ] Jump host / ProxyJump support
 - [ ] Auto-mask sensitive data in command output
 - [ ] Remember CWD across commands (session state)
 
-## Wave S10 — Documentation ⏳
+---
+
+## Wave S9 — Documentation ⏳
 
 > Planned. README update to match meta-repo standard.
 
 - [ ] Update README.md to follow `README_TEMPLATE.md`
-- [ ] Add config samples for all 18 tools
+- [ ] Add config samples for all tools
 - [ ] Add per-tool parameter tables
 
 ---
@@ -246,18 +300,17 @@ Source: [four-opencode-plugins ROADMAP Wave S5](https://github.com/four-bytes/fo
 | S1   | ✅ Done        |
 | S2   | ✅ Done        |
 | S3   | ✅ Done        |
-| S4   | ✅ Done        |
-| S5   | ✅ Done        |
+| S4   | ⏳ Planned (Git Extraction → four-opencode-git) |
+| S5   | ⏳ Planned (Supertools Redesign) |
 | S6   | 🚧 In Progress |
 | S7   | ⏳ Planned     |
-| S8   | 🚧 In Progress |
+| S8   | ⏳ Planned     |
 | S9   | ⏳ Planned     |
-| S10  | ⏳ Planned     |
 
 ## Execution Order
 
 ```
-S1 ✅ → S2 ✅ → S3 ✅ → S4 ✅ → S5 ✅ → S6 🚧 → S7 ⏳ → S8 🚧 → S9 ⏳ → S10 ⏳
+S1 ✅ → S2 ✅ → S3 ✅ → S4 ⏳ (Git Extraction) → S5 ⏳ (Redesign) → S6 🚧 → S7 ⏳ → S8 ⏳ → S9 ⏳
 ```
 
-All waves S1-S5 complete. S6 in progress, S8 in progress, S7/S9/S10 planned.
+Waves S1–S3 complete. S4 (Git Extraction) and S5 (Supertools Redesign) follow meta-repo Wave G + Wave S. S6 in progress, S7–S9 planned.
