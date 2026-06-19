@@ -33,3 +33,5 @@
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)
 - Bun runtime, ESM modules
+
+- **Console logging:** Plugins MUST use `_client?.app?.log()` for all logging in plugin mode — `console.log` / `console.warn` / `console.error` is ONLY permitted for the initial startup `"init"` message. Console output in plugin mode breaks the terminal UI.
