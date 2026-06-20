@@ -296,6 +296,10 @@ export class LspClient {
       // Process may already be dead
     }
 
+    // Reject all in-flight requests before clearing
+    for (const [, pending] of this.pending) {
+      pending.reject(new Error('LSP client shutting down'));
+    }
     this.pending.clear();
     this.proc = null;
     this._initPromise = null;
@@ -420,6 +424,9 @@ export class LspClient {
       }
     } finally {
       reader.releaseLock();
+      // Clear lifecycle state so isRunning reflects reality
+      this.proc = null;
+      this._initPromise = null;
     }
   }
 
@@ -429,11 +436,10 @@ export class LspClient {
    */
   private parseBuffer(): void {
     while (this.buffer.length > 0) {
-      // Find Content-Length header
-      const headerMatch = this.buffer.match(/^Content-Length: (\d+)\r\n\r\n/);
-      if (!headerMatch || headerMatch.index === undefined) {
-        // No complete header yet — wait for more data
-        // Skip any non-header bytes at the start
+      // Match Content-Length header line only
+      const headerMatch = this.buffer.match(/^Content-Length: (\d+)\r\n/);
+      if (!headerMatch) {
+        // No Content-Length header yet — skip any non-header bytes at the start
         const nextHeader = this.buffer.search(/Content-Length:/);
         if (nextHeader > 0) {
           this.buffer = this.buffer.slice(nextHeader);
@@ -443,16 +449,18 @@ export class LspClient {
       }
 
       const contentLength = parseInt(headerMatch[1], 10);
-      const headerEnd = headerMatch.index + headerMatch[0].length;
+
+      // Find end of headers (double CRLF)
+      const bodyStart = this.buffer.indexOf('\r\n\r\n');
+      if (bodyStart === -1) break;
 
       // Check if we have the full content
-      if (this.buffer.length < headerEnd + contentLength) {
-        // Not enough data yet — wait for more
+      if (this.buffer.length < bodyStart + 4 + contentLength) {
         break;
       }
 
-      const content = this.buffer.slice(headerEnd, headerEnd + contentLength);
-      this.buffer = this.buffer.slice(headerEnd + contentLength);
+      const content = this.buffer.slice(bodyStart + 4, bodyStart + 4 + contentLength);
+      this.buffer = this.buffer.slice(bodyStart + 4 + contentLength);
 
       try {
         const message: JsonRpcMessage = JSON.parse(content);
