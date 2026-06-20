@@ -117,9 +117,10 @@ export class LspClient {
 
   /**
    * Send initialize request. Must be called after spawn.
-   * Returns the server capabilities.
+   * Returns the server capabilities. Idempotent — returns early if already initializing.
    */
   async initialize(rootUri: string, timeout = 30000): Promise<unknown> {
+    if (this._initPromise) return this._initPromise;
     if (!this.proc) {
       logDebugEvent('lsp.initialize.skip', { reason: 'no-process' });
       return {};
@@ -159,6 +160,7 @@ export class LspClient {
 
   /** Send textDocument/didOpen notification. */
   async openDocument(uri: string, text: string, languageId: string): Promise<void> {
+    if (this.openDocuments.has(uri)) return;
     // Ensure LSP handshake is complete before sending didOpen
     await this._ensureInitialized();
     this.openDocuments.add(uri);
