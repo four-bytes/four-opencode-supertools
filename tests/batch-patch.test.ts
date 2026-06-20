@@ -48,8 +48,8 @@ describe('batch_patch tool', () => {
     ]);
 
     const result = await batchPatchTool.execute({ patches }, mockCtx());
-    expect(result.applied).toHaveLength(2);
-    expect(result.failed).toHaveLength(0);
+    expect(result.metadata.applied).toHaveLength(2);
+    expect(result.metadata.failed).toHaveLength(0);
     expect(readFileSync(file1, 'utf-8')).toContain('hello universe');
     expect(readFileSync(file2, 'utf-8')).toContain('foo baz');
   });
@@ -61,8 +61,8 @@ describe('batch_patch tool', () => {
     ]);
 
     const result = await batchPatchTool.execute({ patches }, mockCtx());
-    expect(result.failed.length).toBeGreaterThan(0);
-    expect(result.applied).toHaveLength(1); // First one still applies
+    expect(result.metadata.failed.length).toBeGreaterThan(0);
+    expect(result.metadata.applied).toHaveLength(1); // First one still applies
   });
 
   it('rolls back on atomic mode', async () => {
@@ -73,7 +73,7 @@ describe('batch_patch tool', () => {
     ]);
 
     const result = await batchPatchTool.execute({ patches, atomic: true }, mockCtx());
-    expect(result.failed.length).toBeGreaterThan(0);
+    expect(result.metadata.failed.length).toBeGreaterThan(0);
     // file1 should be rolled back
     expect(readFileSync(file1, 'utf-8')).toBe(original1);
   });

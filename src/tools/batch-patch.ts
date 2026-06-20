@@ -69,15 +69,19 @@ export const batchPatchTool = tool({
             }
           }
           return {
-            applied: [],
-            failed,
-            rolled_back: applied.length > 0 ? applied : [],
+            title: 'Batch patch rolled back',
+            output: `Rolled back due to failure in ${failed[0]?.file}: ${failed[0]?.error}`,
+            metadata: { applied: [], failed, rolled_back: applied.length > 0 ? applied : [] },
           };
         }
       }
     }
 
     logDebugEvent('batch_patch.complete', { applied: applied.length, failed: failed.length });
-    return { applied, failed };
+    return {
+      title: applied.length > 0 ? `Patched ${applied.length} file(s)` : 'Batch patch',
+      output: `Applied: ${applied.length}, Failed: ${failed.length}\n${[...applied.map(f => `  ✓ ${f}`), ...failed.map(f => `  ✗ ${f.file}: ${f.error}`)].join('\n')}`,
+      metadata: { applied, failed },
+    };
   },
 });

@@ -28,11 +28,11 @@ describe('solution_confidence tool', () => {
       ctx as any
     );
 
-    expect(result).toHaveProperty('confidence');
-    expect(result).toHaveProperty('verdict');
-    expect(result).toHaveProperty('risks');
-    expect(result).toHaveProperty('checks');
-    expect(['likely_fixed', 'uncertain', 'band_aid']).toContain(result.verdict);
+    expect(result.metadata).toHaveProperty('confidence');
+    expect(result.metadata).toHaveProperty('verdict');
+    expect(result.metadata).toHaveProperty('risks');
+    expect(result.metadata).toHaveProperty('checks');
+    expect(['likely_fixed', 'uncertain', 'band_aid']).toContain(result.metadata.verdict);
   });
 
   it('returns band_aid when all checks fail', async () => {
@@ -47,7 +47,7 @@ describe('solution_confidence tool', () => {
       ctx
     );
 
-    expect(result.verdict).toBe('band_aid');
-    expect(result.confidence).toBe(0);
+    expect(result.metadata.verdict).toBe('band_aid');
+    expect(result.metadata.confidence).toBe(0);
   });
 });

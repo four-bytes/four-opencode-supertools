@@ -29,7 +29,7 @@ export const solutionConfidenceTool = tool({
       const testPattern = words.slice(0, 3).join('|');
 
       try {
-        const testResult = await ctx.callTool('run_tests', { test_file: '.', filter: testPattern });
+        const testResult = await (ctx as any).callTool('run_tests', { test_file: '.', filter: testPattern });
         if (testResult && typeof testResult === 'object') {
           testsPassed = (testResult as Record<string, unknown>).failures === 0;
         }
@@ -42,7 +42,7 @@ export const solutionConfidenceTool = tool({
 
     // 2. Search brain for matching KB patterns
     try {
-      const kbResults = await ctx.callTool('brain_search', { query: args.description, limit: 3 });
+      const kbResults = await (ctx as any).callTool('brain_search', { query: args.description, limit: 3 });
       if (Array.isArray(kbResults) && kbResults.length > 0) {
         const bestMatch = kbResults[0] as Record<string, unknown>;
         kbMatch = typeof bestMatch.score === 'number' && bestMatch.score > 0.7;
@@ -55,7 +55,7 @@ export const solutionConfidenceTool = tool({
 
     // 3. Git coverage check (pr_risk)
     try {
-      const prResult = await ctx.callTool('pr_risk', {});
+      const prResult = await (ctx as any).callTool('pr_risk', {});
       coverageChecked = prResult !== undefined;
       if (prResult && typeof prResult === 'object') {
         const riskLevel = (prResult as Record<string, unknown>).risk_level;
@@ -87,11 +87,16 @@ export const solutionConfidenceTool = tool({
     else verdict = 'band_aid';
 
     logDebugEvent('solution_confidence.complete', { score, verdict });
-    return {
+    const result = {
       confidence: Math.round(score * 100) / 100,
       verdict,
       risks,
       checks: { tests: testsPassed, kb_match: kbMatch, coverage: coverageChecked },
+    };
+    return {
+      title: `Confidence: ${result.verdict} (${result.confidence})`,
+      output: JSON.stringify(result, null, 2),
+      metadata: result,
     };
   },
 });

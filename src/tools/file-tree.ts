@@ -89,17 +89,24 @@ export const fileTreeTool = tool({
 
     if (!statSync(targetPath).isDirectory()) {
       const stat = statSync(targetPath);
-      return [
-        {
-          name: targetPath.split('/').pop() || targetPath,
-          type: 'file' as const,
-          size: stat.size,
-        },
-      ];
+      const singleFile = {
+        name: targetPath.split('/').pop() || targetPath,
+        type: 'file' as const,
+        size: stat.size,
+      };
+      return {
+        title: targetPath.split('/').pop() || targetPath,
+        output: JSON.stringify(singleFile, null, 2),
+        metadata: { entries: [singleFile] },
+      };
     }
 
     const results = walkDir(targetPath, 0, depth, args.filter, args.include_hidden);
     logDebugEvent('file_tree.complete', { path: targetPath, entries: results.length });
-    return results;
+    return {
+      title: targetPath.split('/').pop() || targetPath,
+      output: JSON.stringify(results, null, 2),
+      metadata: { path: targetPath, entries: results.length, tree: results },
+    };
   },
 });

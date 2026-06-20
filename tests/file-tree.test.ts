@@ -42,16 +42,16 @@ describe('file_tree tool', () => {
 
   it('lists directory tree', async () => {
     const result = await fileTreeTool.execute({ path: testDir, depth: 2 }, mockCtx());
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.some((n: { name: string }) => n.name === 'file1.txt')).toBe(true);
-    expect(result.some((n: { name: string }) => n.name === 'subdir/')).toBe(true);
+    expect(Array.isArray(result.metadata.tree)).toBe(true);
+    expect(result.metadata.tree.some((n: { name: string }) => n.name === 'file1.txt')).toBe(true);
+    expect(result.metadata.tree.some((n: { name: string }) => n.name === 'subdir/')).toBe(true);
   });
 
   it('returns file info for single file path', async () => {
     const result = await fileTreeTool.execute({ path: join(testDir, 'file1.txt') }, mockCtx());
-    expect(Array.isArray(result)).toBe(true);
-    expect(result[0].type).toBe('file');
-    expect(result[0].size).toBe(5);
+    expect(Array.isArray(result.metadata.entries)).toBe(true);
+    expect(result.metadata.entries[0].type).toBe('file');
+    expect(result.metadata.entries[0].size).toBe(5);
   });
 
   it('throws on nonexistent path', async () => {

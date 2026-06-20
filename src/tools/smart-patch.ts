@@ -118,6 +118,10 @@ export const smartPatchTool = tool({
 
     writeFileSync(file_path, fileLines.join('\n'), 'utf-8');
     logDebugEvent('smart_patch.complete', { file_path, hunks: hunks.length });
-    return { applied: true, hunks: hunks.length, offsets: offsets };
+    return {
+      title: `Patched ${file_path.split('/').pop()}`,
+      output: `Applied ${hunks.length} hunk(s) to ${file_path}`,
+      metadata: { applied: true, hunks: hunks.length, offsets },
+    };
   },
 });

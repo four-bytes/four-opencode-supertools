@@ -35,7 +35,7 @@ export const researchTool = tool({
         promises.push(
           (async () => {
             try {
-              const result = await ctx.callTool('brain_search', { query, limit: 5 });
+              const result = await (ctx as any).callTool('brain_search', { query, limit: 5 });
               entry.brain = Array.isArray(result) ? result : [result];
             } catch {
               entry.brain = [];
@@ -48,7 +48,7 @@ export const researchTool = tool({
         promises.push(
           (async () => {
             try {
-              const result = await ctx.callTool('websearch', { query });
+              const result = await (ctx as any).callTool('websearch', { query });
               entry.web = Array.isArray(result) ? result : [result];
             } catch {
               entry.web = [];
@@ -62,6 +62,10 @@ export const researchTool = tool({
     }
 
     logDebugEvent('research.complete', { count: results.length });
-    return results;
+    return {
+      title: `Research: ${queries.join(', ').substring(0, 80)}`,
+      output: JSON.stringify(results, null, 2),
+      metadata: { queryCount: queries.length, scope, results },
+    };
   },
 });
