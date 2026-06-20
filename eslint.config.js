@@ -25,7 +25,10 @@ export default tseslint.config(
         Response: 'readonly',
         fetch: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         RequestInit: 'readonly',
+        TextDecoder: 'readonly',
+        Timer: 'readonly',
       },
     },
     plugins: {

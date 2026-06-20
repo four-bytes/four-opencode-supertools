@@ -13,6 +13,8 @@ import { fileTreeTool } from './tools/file-tree';
 import { researchTool } from './tools/research';
 import { solutionConfidenceTool } from './tools/solution-confidence';
 
+import { lspReferencesTool } from './tools/lsp-references';
+
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
     tool: {
@@ -26,6 +28,7 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       file_tree: fileTreeTool,
       research: researchTool,
       solution_confidence: solutionConfidenceTool,
+      lsp_references: lspReferencesTool,
     },
   };
 };
