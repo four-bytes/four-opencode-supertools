@@ -15,11 +15,7 @@ import { logDebugEvent } from '../lib/debug-logger';
  *         <lineNum> -<removed_line>
  *         <lineNum> +<added_line>
  */
-function formatDiff(
-  filePath: string,
-  oldContent: string,
-  newContent: string,
-): string {
+function formatDiff(filePath: string, oldContent: string, newContent: string): string {
   const oldLines = oldContent.split('\n');
   const newLines = newContent.split('\n');
   const maxLen = Math.max(oldLines.length, newLines.length);
@@ -92,11 +88,13 @@ function formatDiff(
 
   // Format output
   const header = `● Update(${filePath})\n  ⎿  Added ${added} lines, removed ${removed} lines\n`;
-  const body = diff.map((d) => {
-    const num = d.kind === 'added' ? d.newNum! : d.oldNum!;
-    const prefix = d.kind === 'removed' ? '-' : d.kind === 'added' ? '+' : ' ';
-    return `      ${String(num).padStart(4)} ${prefix}${d.text}`;
-  }).join('\n');
+  const body = diff
+    .map((d) => {
+      const num = d.kind === 'added' ? d.newNum! : d.oldNum!;
+      const prefix = d.kind === 'removed' ? '-' : d.kind === 'added' ? '+' : ' ';
+      return `      ${String(num).padStart(4)} ${prefix}${d.text}`;
+    })
+    .join('\n');
 
   return header + body;
 }
@@ -105,15 +103,9 @@ export const smartEditTool = tool({
   description: `Replace text in a file with whitespace-tolerant fuzzy matching. Tries exact match first, then retries with normalized whitespace per line. Use when native edit fails due to indentation variance.`,
 
   args: {
-    file_path: tool.schema
-      .string()
-      .describe('Absolute path to the file'),
-    old_string: tool.schema
-      .string()
-      .describe('Text to find and replace'),
-    new_string: tool.schema
-      .string()
-      .describe('Replacement text'),
+    file_path: tool.schema.string().describe('Absolute path to the file'),
+    old_string: tool.schema.string().describe('Text to find and replace'),
+    new_string: tool.schema.string().describe('Replacement text'),
     allow_multiple: tool.schema
       .boolean()
       .optional()
@@ -139,7 +131,7 @@ export const smartEditTool = tool({
 
     let matchCount = 0;
     let firstMatchLine = -1;
-    let method: 'exact' | 'normalized' = 'exact';
+    let method: 'exact' | 'normalized';
 
     // ── Exact match ──
     const exactMatches = originalContent.split(old_string).length - 1;
@@ -155,7 +147,9 @@ export const smartEditTool = tool({
         ? originalContent.replaceAll(old_string, new_string)
         : originalContent.replace(old_string, new_string);
       writeFileSync(file_path, newContent, 'utf-8');
-      firstMatchLine = originalContent.substring(0, originalContent.indexOf(old_string)).split('\n').length;
+      firstMatchLine = originalContent
+        .substring(0, originalContent.indexOf(old_string))
+        .split('\n').length;
       matchCount = exactMatches;
       method = 'exact';
     } else {
@@ -175,7 +169,9 @@ export const smartEditTool = tool({
 
       if (matchCount === 0) {
         logDebugEvent('smart_edit.not_found', { file_path });
-        throw new Error(`Text not found in ${file_path} (tried exact and whitespace-normalized match)`);
+        throw new Error(
+          `Text not found in ${file_path} (tried exact and whitespace-normalized match)`
+        );
       }
 
       if (matchCount > 1 && !allow_multiple) {

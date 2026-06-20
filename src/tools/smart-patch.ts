@@ -6,7 +6,9 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { logDebugEvent } from '../lib/debug-logger';
 
 /** Simple unified diff parser — extracts context, additions, and deletions per hunk. */
-function parseSimpleDiff(patch: string): Array<{ context: string[]; additions: string[]; deletions: string[] }> {
+function parseSimpleDiff(
+  patch: string
+): Array<{ context: string[]; additions: string[]; deletions: string[] }> {
   const hunks: Array<{ context: string[]; additions: string[]; deletions: string[] }> = [];
   const lines = patch.split('\n');
   let current: { context: string[]; additions: string[]; deletions: string[] } | null = null;

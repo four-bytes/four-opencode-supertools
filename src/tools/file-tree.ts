@@ -15,7 +15,13 @@ interface FileNode {
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'vendor']);
 
-function walkDir(dir: string, depth: number, maxDepth: number, filter?: string, includeHidden = false): FileNode[] {
+function walkDir(
+  dir: string,
+  depth: number,
+  maxDepth: number,
+  filter?: string,
+  includeHidden = false
+): FileNode[] {
   if (depth > maxDepth) return [];
 
   const results: FileNode[] = [];
@@ -63,14 +69,8 @@ export const fileTreeTool = tool({
 
   args: {
     path: tool.schema.string().describe('Directory path to list'),
-    depth: tool.schema
-      .number()
-      .optional()
-      .describe('Maximum depth (default: 3)'),
-    filter: tool.schema
-      .string()
-      .optional()
-      .describe('Glob pattern to filter files (e.g., "*.ts")'),
+    depth: tool.schema.number().optional().describe('Maximum depth (default: 3)'),
+    filter: tool.schema.string().optional().describe('Glob pattern to filter files (e.g., "*.ts")'),
     include_hidden: tool.schema
       .boolean()
       .optional()

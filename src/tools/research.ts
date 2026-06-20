@@ -35,6 +35,7 @@ export const researchTool = tool({
         promises.push(
           (async () => {
             try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const result = await (ctx as any).callTool('brain_search', { query, limit: 5 });
               entry.brain = Array.isArray(result) ? result : [result];
             } catch {
@@ -48,6 +49,7 @@ export const researchTool = tool({
         promises.push(
           (async () => {
             try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const result = await (ctx as any).callTool('websearch', { query });
               entry.web = Array.isArray(result) ? result : [result];
             } catch {

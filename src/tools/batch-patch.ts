@@ -10,8 +10,13 @@ export const batchPatchTool = tool({
   description: `Apply patches to multiple files in one call. Optional atomic mode: snapshot all files, apply all, rollback on any failure.`,
 
   args: {
-    patches: tool.schema.string().describe('JSON array of { file_path: string, patch: string } objects'),
-    atomic: tool.schema.boolean().optional().describe('If true, rollback ALL files on any failure (default: false)'),
+    patches: tool.schema
+      .string()
+      .describe('JSON array of { file_path: string, patch: string } objects'),
+    atomic: tool.schema
+      .boolean()
+      .optional()
+      .describe('If true, rollback ALL files on any failure (default: false)'),
   },
 
   async execute(args, _ctx) {
@@ -44,6 +49,7 @@ export const batchPatchTool = tool({
 
     for (const p of patches) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await smartPatchTool.execute({ file_path: p.file_path, patch: p.patch }, {} as any);
         applied.push(p.file_path);
       } catch (e: unknown) {
@@ -80,7 +86,7 @@ export const batchPatchTool = tool({
     logDebugEvent('batch_patch.complete', { applied: applied.length, failed: failed.length });
     return {
       title: applied.length > 0 ? `Patched ${applied.length} file(s)` : 'Batch patch',
-      output: `Applied: ${applied.length}, Failed: ${failed.length}\n${[...applied.map(f => `  ✓ ${f}`), ...failed.map(f => `  ✗ ${f.file}: ${f.error}`)].join('\n')}`,
+      output: `Applied: ${applied.length}, Failed: ${failed.length}\n${[...applied.map((f) => `  ✓ ${f}`), ...failed.map((f) => `  ✗ ${f.file}: ${f.error}`)].join('\n')}`,
       metadata: { applied, failed },
     };
   },
