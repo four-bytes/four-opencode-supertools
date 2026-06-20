@@ -12,7 +12,7 @@ import { batchPatchTool } from './tools/batch-patch';
 import { fileTreeTool } from './tools/file-tree';
 import { researchTool } from './tools/research';
 import { solutionConfidenceTool } from './tools/solution-confidence';
-import { ghBotReviewTool } from './tools/gh-bot-review';
+
 import { lspReferencesTool } from './tools/lsp-references';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
@@ -28,7 +28,6 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       file_tree: fileTreeTool,
       research: researchTool,
       solution_confidence: solutionConfidenceTool,
-      gh_bot_review: ghBotReviewTool,
       lsp_references: lspReferencesTool,
     },
   };

@@ -3,6 +3,7 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { logDebugEvent } from '../lib/debug-logger';
+import { relative } from 'node:path';
 import { getLspRegistry } from '../lib/lsp-registry.js';
 
 const DEFAULT_MAX_RESULTS = 50;
@@ -19,12 +20,10 @@ interface LspReferencesOutput {
 }
 
 function toRelativePath(uri: string, baseDir: string): string {
-  // Strip file:// prefix and convert to relative if under baseDir
-  const path = uri.startsWith('file://') ? uri.slice(7) : uri;
-  if (path.startsWith(baseDir)) {
-    return '.' + path.slice(baseDir.length);
-  }
-  return path;
+  const filePath = uri.startsWith('file://') ? uri.slice(7) : uri;
+  const rel = relative(baseDir, filePath);
+  if (rel.startsWith('..') || rel === '') return filePath;
+  return './' + rel;
 }
 
 export const lspReferencesTool = tool({
@@ -50,6 +49,7 @@ export const lspReferencesTool = tool({
 
   async execute(args, ctx) {
     const { file_path, line, character = 1, max_results = DEFAULT_MAX_RESULTS } = args;
+    const validatedMax = Math.max(1, Math.floor(max_results)) || DEFAULT_MAX_RESULTS;
 
     // Convert to 0-based for LSP
     const lspLine = Math.max(0, line - 1);
@@ -63,26 +63,34 @@ export const lspReferencesTool = tool({
     if (!resolved) {
       const config = registry.findConfig(file_path);
       if (!config) {
-        return JSON.stringify({
+        return {
+          title: 'LSP References — No Server Configured',
+          output: JSON.stringify({
+            available: false,
+            file: file_path,
+            position: { line, character },
+            count: 0,
+            references: [],
+            truncated: false,
+            hint: `No LSP server configured for this file type. Add a server config for the file extension.`,
+          } satisfies LspReferencesOutput),
+          metadata: { file_path, line, character, available: false },
+        };
+      }
+
+      return {
+        title: 'LSP References — Server Not Installed',
+        output: JSON.stringify({
           available: false,
           file: file_path,
           position: { line, character },
           count: 0,
           references: [],
           truncated: false,
-          hint: `No LSP server configured for this file type. Add a server config for the file extension.`,
-        } satisfies LspReferencesOutput);
-      }
-
-      return JSON.stringify({
-        available: false,
-        file: file_path,
-        position: { line, character },
-        count: 0,
-        references: [],
-        truncated: false,
-        hint: `LSP server "${config.command[0]}" is not installed.`,
-      } satisfies LspReferencesOutput);
+          hint: `LSP server "${config.command[0]}" is not installed.`,
+        } satisfies LspReferencesOutput),
+        metadata: { file_path, line, character, available: false },
+      };
     }
 
     const { client, languageId } = resolved;
@@ -93,15 +101,19 @@ export const lspReferencesTool = tool({
     try {
       fileText = await Bun.file(file_path).text();
     } catch {
-      return JSON.stringify({
-        available: false,
-        file: file_path,
-        position: { line, character },
-        count: 0,
-        references: [],
-        truncated: false,
-        hint: `Could not read file: ${file_path}`,
-      } satisfies LspReferencesOutput);
+      return {
+        title: 'LSP References — File Read Error',
+        output: JSON.stringify({
+          available: false,
+          file: file_path,
+          position: { line, character },
+          count: 0,
+          references: [],
+          truncated: false,
+          hint: `Could not read file: ${file_path}`,
+        } satisfies LspReferencesOutput),
+        metadata: { file_path, line, character, available: false },
+      };
     }
 
     // Ensure document is open (async to wait for LSP handshake)
@@ -111,8 +123,8 @@ export const lspReferencesTool = tool({
     const rawReferences = await client.references(uri, lspLine, lspChar);
 
     const baseDir = ctx.directory ?? process.cwd();
-    const truncated = rawReferences.length > max_results;
-    const limited = rawReferences.slice(0, max_results);
+    const truncated = rawReferences.length > validatedMax;
+    const limited = rawReferences.slice(0, validatedMax);
 
     const references = limited.map((loc) => ({
       file: toRelativePath(loc.uri, baseDir),
@@ -137,10 +149,21 @@ export const lspReferencesTool = tool({
     };
 
     if (truncated) {
-      const remaining = rawReferences.length - max_results;
-      output.hint = `Only showing ${max_results} of ${rawReferences.length} references. …and ${remaining} more.`;
+      const remaining = rawReferences.length - validatedMax;
+      output.hint = `Only showing ${validatedMax} of ${rawReferences.length} references. …and ${remaining} more.`;
     }
 
-    return JSON.stringify(output);
+    return {
+      title: 'LSP References',
+      output: JSON.stringify(output),
+      metadata: {
+        file_path,
+        line,
+        character,
+        available: true,
+        count: output.count,
+        truncated: output.truncated,
+      },
+    };
   },
 });

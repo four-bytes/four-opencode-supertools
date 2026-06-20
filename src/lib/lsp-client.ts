@@ -42,7 +42,7 @@ export interface Diagnostic {
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
-  timer: Timer;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 interface JsonRpcMessage {
@@ -327,8 +327,6 @@ export class LspClient {
 
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        // Kill stale process on timeout
-        this.killProcess();
         reject(new Error(`Request timeout: ${method} (id=${id})`));
       }, timeout);
 
