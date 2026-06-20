@@ -82,6 +82,9 @@ function formatDiff(filePath: string, oldContent: string, newContent: string): s
               added++;
               ni++;
             }
+            // Emit the matched line as context (exists in both old and new)
+            diff.push({ kind: 'context', oldNum: oi + 1, newNum: ni + 1, text: oldLine });
+            ni++;
             found = true;
             break;
           }
