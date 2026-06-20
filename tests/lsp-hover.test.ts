@@ -115,8 +115,11 @@ function registerMockServer(): void {
 // Tests
 // ────────────────────────────────────────────────────────────────
 
-function parseResult(result: string): Record<string, unknown> {
-  return JSON.parse(result) as Record<string, unknown>;
+function parseResult(result: unknown): Record<string, unknown> {
+  const output = typeof result === 'object' && result !== null && 'output' in result
+    ? (result as { output: string }).output
+    : String(result);
+  return JSON.parse(output) as Record<string, unknown>;
 }
 
 function mockCtx(dir: string) {
