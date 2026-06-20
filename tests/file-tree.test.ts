@@ -45,6 +45,8 @@ describe('file_tree tool', () => {
     expect(Array.isArray(result.metadata.tree)).toBe(true);
     expect(result.metadata.tree.some((n: { name: string }) => n.name === 'file1.txt')).toBe(true);
     expect(result.metadata.tree.some((n: { name: string }) => n.name === 'subdir/')).toBe(true);
+    expect(typeof result.output).toBe('string');
+    expect(() => JSON.parse(result.output)).not.toThrow();
   });
 
   it('returns file info for single file path', async () => {

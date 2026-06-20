@@ -62,15 +62,34 @@ function formatDiff(filePath: string, oldContent: string, newContent: string): s
     if (oi >= end && ni >= end) break;
 
     if (oldLine === newLine) {
+      // Both past content — stop rendering
+      if (oldLine === undefined) break;
       // Context line
-      diff.push({ kind: 'context', oldNum: oi + 1, newNum: ni + 1, text: oldLine! });
+      diff.push({ kind: 'context', oldNum: oi + 1, newNum: ni + 1, text: oldLine });
       oi++;
       ni++;
     } else {
       // Try to align: skip removed lines first
       if (oldLine !== undefined && (oi < firstDiff || oi <= lastDiff)) {
-        diff.push({ kind: 'removed', oldNum: oi + 1, text: oldLine });
-        removed++;
+        // Check if this removed line content appears in upcoming new lines
+        const lookahead = 3;
+        let found = false;
+        for (let k = 0; k < lookahead && ni + k < newLines.length; k++) {
+          if (oldLine === newLines[ni + k]) {
+            // Found match — skip added lines to realign
+            for (let j = 0; j < k; j++) {
+              diff.push({ kind: 'added', newNum: ni + 1, text: newLines[ni] });
+              added++;
+              ni++;
+            }
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          diff.push({ kind: 'removed', oldNum: oi + 1, text: oldLine });
+          removed++;
+        }
         oi++;
         continue;
       }

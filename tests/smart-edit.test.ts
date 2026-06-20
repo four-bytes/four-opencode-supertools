@@ -48,6 +48,9 @@ describe('smart_edit tool', () => {
 
     expect(result.metadata.changed).toBe(true);
     expect(result.metadata.method).toBe('exact');
+    expect(result.title).toMatch(/^Updated /);
+    expect(typeof result.output).toBe('string');
+    expect(result.output.length).toBeGreaterThan(0);
     const content = readFileSync(testFile, 'utf-8');
     expect(content).toContain("return 'universe'");
   });
@@ -66,6 +69,9 @@ describe('smart_edit tool', () => {
 
     expect(result.metadata.changed).toBe(true);
     expect(result.metadata.method).toBe('normalized');
+    expect(result.title).toMatch(/^Updated /);
+    expect(typeof result.output).toBe('string');
+    expect(result.output.length).toBeGreaterThan(0);
     const content = readFileSync(testFile, 'utf-8');
     expect(content).toContain("return 'mars'");
   });

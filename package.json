@@ -29,7 +29,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@opencode-ai/plugin": "^1.15.13"
+    "@opencode-ai/plugin": "1.15.13"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -33,6 +33,9 @@ describe('solution_confidence tool', () => {
     expect(result.metadata).toHaveProperty('risks');
     expect(result.metadata).toHaveProperty('checks');
     expect(['likely_fixed', 'uncertain', 'band_aid']).toContain(result.metadata.verdict);
+    expect(result).toHaveProperty('title');
+    expect(result).toHaveProperty('output');
+    expect(typeof result.output).toBe('string');
   });
 
   it('returns band_aid when all checks fail', async () => {

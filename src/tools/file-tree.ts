@@ -3,7 +3,7 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { readdirSync, statSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { logDebugEvent } from '../lib/debug-logger';
 
 interface FileNode {
@@ -87,15 +87,17 @@ export const fileTreeTool = tool({
       throw new Error(`Path not found: ${targetPath}`);
     }
 
+    const displayName = basename(targetPath);
+
     if (!statSync(targetPath).isDirectory()) {
       const stat = statSync(targetPath);
       const singleFile = {
-        name: targetPath.split('/').pop() || targetPath,
+        name: displayName,
         type: 'file' as const,
         size: stat.size,
       };
       return {
-        title: targetPath.split('/').pop() || targetPath,
+        title: displayName,
         output: JSON.stringify(singleFile, null, 2),
         metadata: { entries: [singleFile] },
       };
@@ -104,9 +106,9 @@ export const fileTreeTool = tool({
     const results = walkDir(targetPath, 0, depth, args.filter, args.include_hidden);
     logDebugEvent('file_tree.complete', { path: targetPath, entries: results.length });
     return {
-      title: targetPath.split('/').pop() || targetPath,
+      title: displayName,
       output: JSON.stringify(results, null, 2),
-      metadata: { path: targetPath, entries: results.length, tree: results },
+      metadata: { path: targetPath, count: results.length, tree: results },
     };
   },
 });

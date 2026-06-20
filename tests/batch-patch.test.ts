@@ -61,7 +61,7 @@ describe('batch_patch tool', () => {
     ]);
 
     const result = await batchPatchTool.execute({ patches }, mockCtx());
-    expect(result.metadata.failed.length).toBeGreaterThan(0);
+    expect(result.metadata.failed).not.toHaveLength(0);
     expect(result.metadata.applied).toHaveLength(1); // First one still applies
   });
 
@@ -73,7 +73,7 @@ describe('batch_patch tool', () => {
     ]);
 
     const result = await batchPatchTool.execute({ patches, atomic: true }, mockCtx());
-    expect(result.metadata.failed.length).toBeGreaterThan(0);
+    expect(result.metadata.failed).not.toHaveLength(0);
     // file1 should be rolled back
     expect(readFileSync(file1, 'utf-8')).toBe(original1);
   });
