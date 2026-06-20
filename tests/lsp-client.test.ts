@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2025-2026 Four Bytes
 
-import { describe, it, expect, beforeAll } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { LspClient } from '../src/lib/lsp-client';
 import {
   LspRegistry,
@@ -131,6 +131,12 @@ describe('LspClient — JSON-RPC Framing', () => {
 
   beforeAll(() => {
     client = new LspClient();
+  });
+
+  afterAll(() => {
+    client.shutdown().catch(() => {
+      // Best-effort cleanup
+    });
   });
 
   it('spawns a process and initializes successfully', async () => {
