@@ -2,6 +2,7 @@
 // Copyright (c) 2025-2026 Four Bytes
 
 import { tool } from '@opencode-ai/plugin';
+import { pathToFileURL } from 'node:url';
 import { logDebugEvent } from '../lib/debug-logger';
 import { getLspRegistry } from '../lib/lsp-registry.js';
 
@@ -94,37 +95,49 @@ export const lspHoverTool = tool({
     if (!resolved) {
       const config = registry.findConfig(file_path);
       if (!config) {
-        return JSON.stringify({
+        return {
+          title: 'LSP Hover',
+          output: JSON.stringify({
+            available: false,
+            file: file_path,
+            position: { line, character },
+            hint: `No LSP server configured for this file type. Add a server config for the file extension.`,
+          } satisfies LspHoverOutput),
+          metadata: {},
+        };
+      }
+
+      return {
+        title: 'LSP Hover',
+        output: JSON.stringify({
           available: false,
           file: file_path,
           position: { line, character },
-          hint: `No LSP server configured for this file type. Add a server config for the file extension.`,
-        } satisfies LspHoverOutput);
-      }
-
-      return JSON.stringify({
-        available: false,
-        file: file_path,
-        position: { line, character },
-        hint: `LSP server "${config.command[0]}" is not installed.`,
-        suggestion: config.installHint ?? `Install the language server for ${config.languageId}`,
-      } satisfies LspHoverOutput);
+          hint: `LSP server "${config.command[0]}" is not installed.`,
+          suggestion: config.installHint ?? `Install the language server for ${config.languageId}`,
+        } satisfies LspHoverOutput),
+        metadata: {},
+      };
     }
 
     const { client, languageId } = resolved;
-    const uri = `file://${file_path}`;
+    const uri = pathToFileURL(file_path).href;
 
     // Read file content
     let fileText: string;
     try {
       fileText = await Bun.file(file_path).text();
     } catch {
-      return JSON.stringify({
-        available: false,
-        file: file_path,
-        position: { line, character },
-        hint: `Could not read file: ${file_path}`,
-      } satisfies LspHoverOutput);
+      return {
+        title: 'LSP Hover',
+        output: JSON.stringify({
+          available: false,
+          file: file_path,
+          position: { line, character },
+          hint: `Could not read file: ${file_path}`,
+        } satisfies LspHoverOutput),
+        metadata: {},
+      };
     }
 
     // Ensure document is open (async to wait for LSP handshake)
@@ -134,12 +147,16 @@ export const lspHoverTool = tool({
     const hoverResult = await client.hover(uri, lspLine, lspChar);
 
     if (!hoverResult || !hoverResult.contents || hoverResult.contents.trim().length === 0) {
-      return JSON.stringify({
-        available: true,
-        file: file_path,
-        position: { line, character },
-        type: 'no information at this position',
-      } satisfies LspHoverOutput);
+      return {
+        title: 'LSP Hover',
+        output: JSON.stringify({
+          available: true,
+          file: file_path,
+          position: { line, character },
+          type: 'no information at this position',
+        } satisfies LspHoverOutput),
+        metadata: {},
+      };
     }
 
     const fullContents = hoverResult.contents;
@@ -158,6 +175,10 @@ export const lspHoverTool = tool({
 
     logDebugEvent('lsp_hover.complete', { file_path, line, character, hasType: !!type });
 
-    return JSON.stringify(output);
+    return {
+      title: 'LSP Hover',
+      output: JSON.stringify(output),
+      metadata: {},
+    };
   },
 });

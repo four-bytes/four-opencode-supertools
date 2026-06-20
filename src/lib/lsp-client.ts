@@ -67,7 +67,7 @@ export class LspClient {
   private readLoopRunning = false;
   private shutdownRequested = false;
   private _initPromise: Promise<unknown> | null = null;
-  private openDocuments = new Set<string>();
+  openDocuments = new Set<string>();
 
   /** Spawn the LSP server process. */
   spawn(serverCommand: string[], opts?: { env?: Record<string, string> }): void {
