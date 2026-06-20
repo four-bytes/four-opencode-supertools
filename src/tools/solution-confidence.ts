@@ -36,7 +36,7 @@ export const solutionConfidenceTool = tool({
           test_file: '.',
           filter: testPattern,
         });
-        if (testResult && typeof testResult === 'object') {
+        if (testResult && typeof testResult === 'object' && 'failures' in (testResult as object)) {
           testsPassed = (testResult as Record<string, unknown>).failures === 0;
         }
       } catch {
@@ -92,6 +92,7 @@ export const solutionConfidenceTool = tool({
     ).length;
     if (activeChecks > 0 && activeChecks < 3) {
       score = score * (3 / activeChecks);
+      score = Math.min(score, 1.0);
     }
 
     let verdict: 'likely_fixed' | 'uncertain' | 'band_aid';

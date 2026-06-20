@@ -137,6 +137,8 @@ export const smartEditTool = tool({
   async execute(args, _ctx) {
     const { file_path, old_string, new_string, allow_multiple } = args;
 
+    if (!old_string) throw new Error('old_string must be a non-empty string');
+
     logDebugEvent('smart_edit.start', { file_path, old_string: old_string.substring(0, 40) });
 
     if (!existsSync(file_path)) {

@@ -30,7 +30,7 @@ export const batchPatchTool = tool({
 
     const applied: string[] = [];
     const failed: Array<{ file: string; error: string }> = [];
-    const snapshots = new Map<string, string>();
+    const snapshots = new Map<string, string | null>();
 
     // Take snapshots if atomic
     if (args.atomic) {
@@ -39,10 +39,10 @@ export const batchPatchTool = tool({
           if (existsSync(p.file_path)) {
             snapshots.set(p.file_path, readFileSync(p.file_path, 'utf-8'));
           } else {
-            snapshots.set(p.file_path, ''); // File doesn't exist yet
+            snapshots.set(p.file_path, null); // File doesn't exist yet
           }
         } catch {
-          snapshots.set(p.file_path, '');
+          snapshots.set(p.file_path, null);
         }
       }
     }
@@ -60,7 +60,7 @@ export const batchPatchTool = tool({
           logDebugEvent('batch_patch.rollback', { file: p.file_path, error: errMsg });
           // Rollback all snapshots
           for (const [path, content] of snapshots) {
-            if (content === '') {
+            if (content === null) {
               try {
                 unlinkSync(path);
               } catch {
