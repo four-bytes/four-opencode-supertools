@@ -87,9 +87,6 @@ export class LspClient {
       this.readLoopRunning = false;
       this.shutdownRequested = false;
       logDebugEvent('lsp.spawn.ok', { command: serverCommand[0], pid: this.proc.pid });
-
-      // Begin async LSP handshake (initialize + initialized) — non-blocking
-      this._startInit();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       logDebugEvent('lsp.spawn.error', { command: serverCommand[0], error: msg });
@@ -120,7 +117,6 @@ export class LspClient {
    * Returns the server capabilities. Idempotent — returns early if already initializing.
    */
   async initialize(rootUri: string, timeout = 30000): Promise<unknown> {
-    if (this._initPromise) return this._initPromise;
     if (!this.proc) {
       logDebugEvent('lsp.initialize.skip', { reason: 'no-process' });
       return {};
