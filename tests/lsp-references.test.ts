@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2025-2026 Four Bytes
 
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -40,7 +40,7 @@ function parseBuffer() {
     try {
       const msg = JSON.parse(content);
       handleMessage(msg);
-    } catch {}
+    } catch (_err) { /* test cleanup */ }
   }
 }
 
@@ -108,7 +108,7 @@ function parseBuffer() {
     if (buffer.length < headerEnd + len) break;
     const content = buffer.slice(headerEnd, headerEnd + len);
     buffer = buffer.slice(headerEnd + len);
-    try { const msg = JSON.parse(content); handleMessage(msg); } catch {}
+    try { const msg = JSON.parse(content); handleMessage(msg); } catch (_err) { /* test cleanup */ }
   }
 }
 
@@ -140,9 +140,9 @@ function handleMessage(msg) {
 // Mock Registry — registers the mock server for .ts
 // ────────────────────────────────────────────────────────────────
 
-function registerMockServer(): void {
+async function registerMockServer(): Promise<void> {
   resetLspRegistry();
-  const { getLspRegistry } = require('../src/lib/lsp-registry');
+  const { getLspRegistry } = await import('../src/lib/lsp-registry');
   const registry = getLspRegistry();
   registry.register({
     command: ['bun', '-e', MOCK_REFS_SERVER],
@@ -166,7 +166,7 @@ function mockCtx(dir: string) {
     agent: 'test-agent',
     directory: dir,
     worktree: dir,
-    abort: new AbortController().signal,
+    abort: new globalThis.AbortController().signal,
     metadata: () => ({}),
     ask: async () => {},
   };
@@ -176,7 +176,7 @@ describe('lsp_references tool', () => {
   let testDir: string;
   let testFile: string;
 
-  beforeAll(() => {
+  beforeEach(async () => {
     testDir = join(tmpdir(), `supertools-lsp-refs-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
     testFile = join(testDir, 'sample.ts');
@@ -185,13 +185,13 @@ describe('lsp_references tool', () => {
       'const greeting: string = "hello";\nfunction foo(): number { return 1; }\nconst x = 1;\nconst y = 2;\n',
       'utf-8'
     );
-    registerMockServer();
+    await registerMockServer();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     try {
       rmSync(testDir, { recursive: true });
-    } catch {}
+    } catch (_err) { /* test cleanup */ }
     const { getLspRegistry } = await import('../src/lib/lsp-registry');
     await getLspRegistry().shutdownAll();
     resetLspRegistry();

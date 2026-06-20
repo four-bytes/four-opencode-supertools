@@ -108,9 +108,12 @@ export class LspRegistry {
 
     const key = config.command.join(' ');
     let client = this.clients.get(key);
-    if (!client) {
+    if (!client || !client.isRunning) {
       client = new LspClient();
-      client.spawn(config.command);
+      // Derive rootUri from the file path's parent directory
+      const rootUri = `file://${filePath.replace(/[/\\][^/\\]*$/, '')}`;
+      client.spawn(config.command, { rootUri });
+      if (!client.isRunning) return null;
       this.clients.set(key, client);
       logDebugEvent('lsp.resolve.new-client', {
         command: config.command[0],
@@ -176,7 +179,7 @@ export class LspRegistry {
   getOpenDocuments(): string[] {
     const docs: string[] = [];
     for (const client of this.clients.values()) {
-      const openDocs = (client as unknown as { openDocuments: Set<string> }).openDocuments;
+      const openDocs = client.openDocuments;
       if (openDocs) {
         for (const uri of openDocs) {
           docs.push(uri);
