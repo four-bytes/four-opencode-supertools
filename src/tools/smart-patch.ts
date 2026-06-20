@@ -6,7 +6,9 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { logDebugEvent } from '../lib/debug-logger';
 
 /** Simple unified diff parser — extracts context, additions, and deletions per hunk. */
-function parseSimpleDiff(patch: string): Array<{ context: string[]; additions: string[]; deletions: string[] }> {
+function parseSimpleDiff(
+  patch: string
+): Array<{ context: string[]; additions: string[]; deletions: string[] }> {
   const hunks: Array<{ context: string[]; additions: string[]; deletions: string[] }> = [];
   const lines = patch.split('\n');
   let current: { context: string[]; additions: string[]; deletions: string[] } | null = null;
@@ -118,6 +120,10 @@ export const smartPatchTool = tool({
 
     writeFileSync(file_path, fileLines.join('\n'), 'utf-8');
     logDebugEvent('smart_patch.complete', { file_path, hunks: hunks.length });
-    return { applied: true, hunks: hunks.length, offsets: offsets };
+    return {
+      title: `Patched ${file_path.split('/').pop()}`,
+      output: `Applied ${hunks.length} hunk(s) to ${file_path}`,
+      metadata: { applied: true, hunks: hunks.length, offsets },
+    };
   },
 });

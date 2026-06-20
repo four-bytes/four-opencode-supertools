@@ -8,7 +8,9 @@ export const solutionConfidenceTool = tool({
   description: `Score how likely a fix actually resolved the problem. Runs tests, searches brain for matching KB patterns, and checks git blast radius coverage. Returns weighted confidence score.`,
 
   args: {
-    description: tool.schema.string().describe('Description of the fix — used to find relevant tests and KB entries'),
+    description: tool.schema
+      .string()
+      .describe('Description of the fix — used to find relevant tests and KB entries'),
     evidence: tool.schema
       .string()
       .optional()
@@ -19,8 +21,8 @@ export const solutionConfidenceTool = tool({
     logDebugEvent('solution_confidence.start', { description: args.description.substring(0, 60) });
 
     let testsPassed: boolean | null = null;
-    let kbMatch: boolean | null = null;
-    let coverageChecked: boolean | null = null;
+    let kbMatch: boolean | null;
+    let coverageChecked: boolean | null;
     const risks: string[] = [];
 
     // 1. Run tests — detect test files from description keywords
@@ -29,7 +31,11 @@ export const solutionConfidenceTool = tool({
       const testPattern = words.slice(0, 3).join('|');
 
       try {
-        const testResult = await ctx.callTool('run_tests', { test_file: '.', filter: testPattern });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const testResult = await (ctx as any).callTool('run_tests', {
+          test_file: '.',
+          filter: testPattern,
+        });
         if (testResult && typeof testResult === 'object') {
           testsPassed = (testResult as Record<string, unknown>).failures === 0;
         }
@@ -42,7 +48,11 @@ export const solutionConfidenceTool = tool({
 
     // 2. Search brain for matching KB patterns
     try {
-      const kbResults = await ctx.callTool('brain_search', { query: args.description, limit: 3 });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const kbResults = await (ctx as any).callTool('brain_search', {
+        query: args.description,
+        limit: 3,
+      });
       if (Array.isArray(kbResults) && kbResults.length > 0) {
         const bestMatch = kbResults[0] as Record<string, unknown>;
         kbMatch = typeof bestMatch.score === 'number' && bestMatch.score > 0.7;
@@ -55,7 +65,8 @@ export const solutionConfidenceTool = tool({
 
     // 3. Git coverage check (pr_risk)
     try {
-      const prResult = await ctx.callTool('pr_risk', {});
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const prResult = await (ctx as any).callTool('pr_risk', {});
       coverageChecked = prResult !== undefined;
       if (prResult && typeof prResult === 'object') {
         const riskLevel = (prResult as Record<string, unknown>).risk_level;
@@ -76,7 +87,9 @@ export const solutionConfidenceTool = tool({
     if (coverageChecked === true) score += weights.coverage;
 
     // If any check is null, redistribute weight proportionally
-    const activeChecks = [testsPassed !== null, kbMatch !== null, coverageChecked !== null].filter(Boolean).length;
+    const activeChecks = [testsPassed !== null, kbMatch !== null, coverageChecked !== null].filter(
+      Boolean
+    ).length;
     if (activeChecks > 0 && activeChecks < 3) {
       score = score * (3 / activeChecks);
     }
@@ -87,11 +100,16 @@ export const solutionConfidenceTool = tool({
     else verdict = 'band_aid';
 
     logDebugEvent('solution_confidence.complete', { score, verdict });
-    return {
+    const result = {
       confidence: Math.round(score * 100) / 100,
       verdict,
       risks,
       checks: { tests: testsPassed, kb_match: kbMatch, coverage: coverageChecked },
+    };
+    return {
+      title: `Confidence: ${result.verdict} (${result.confidence})`,
+      output: JSON.stringify(result, null, 2),
+      metadata: result,
     };
   },
 });

@@ -46,8 +46,11 @@ describe('smart_patch tool', () => {
       mockCtx()
     );
 
-    expect(result.applied).toBe(true);
-    expect(result.hunks).toBe(1);
+    expect(result.metadata.applied).toBe(true);
+    expect(result.metadata.hunks).toBe(1);
+    expect(result.title).toMatch(/^Patched /);
+    expect(typeof result.output).toBe('string');
+    expect(result.output.length).toBeGreaterThan(0);
     const content = readFileSync(testFile, 'utf-8');
     expect(content).toContain('line two');
   });
@@ -63,7 +66,10 @@ describe('smart_patch tool', () => {
       mockCtx()
     );
 
-    expect(result.applied).toBe(true);
+    expect(result.metadata.applied).toBe(true);
+    expect(result.title).toMatch(/^Patched /);
+    expect(typeof result.output).toBe('string');
+    expect(result.output.length).toBeGreaterThan(0);
     const content = readFileSync(testFile, 'utf-8');
     expect(content).toContain('line three');
   });

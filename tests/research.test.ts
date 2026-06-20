@@ -27,10 +27,10 @@ describe('research tool', () => {
       ctx as any
     );
 
-    expect(Array.isArray(result)).toBe(true);
-    expect(result[0].query).toBe('test query');
-    expect(result[0].brain).toBeDefined();
-    expect(result[0].web).toBeDefined();
+    expect(Array.isArray(result.metadata.results)).toBe(true);
+    expect(result.metadata.results[0].query).toBe('test query');
+    expect(result.metadata.results[0].brain).toBeDefined();
+    expect(result.metadata.results[0].web).toBeDefined();
   });
 
   it('handles brain-only scope', async () => {
@@ -46,7 +46,7 @@ describe('research tool', () => {
       ctx
     );
 
-    expect(result[0].brain).toBeDefined();
-    expect(result[0].web).toBeUndefined();
+    expect(result.metadata.results[0].brain).toBeDefined();
+    expect(result.metadata.results[0].web).toBeUndefined();
   });
 });

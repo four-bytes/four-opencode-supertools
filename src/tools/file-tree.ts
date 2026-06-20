@@ -3,7 +3,7 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { readdirSync, statSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { logDebugEvent } from '../lib/debug-logger';
 
 interface FileNode {
@@ -15,7 +15,13 @@ interface FileNode {
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'vendor']);
 
-function walkDir(dir: string, depth: number, maxDepth: number, filter?: string, includeHidden = false): FileNode[] {
+function walkDir(
+  dir: string,
+  depth: number,
+  maxDepth: number,
+  filter?: string,
+  includeHidden = false
+): FileNode[] {
   if (depth > maxDepth) return [];
 
   const results: FileNode[] = [];
@@ -63,14 +69,8 @@ export const fileTreeTool = tool({
 
   args: {
     path: tool.schema.string().describe('Directory path to list'),
-    depth: tool.schema
-      .number()
-      .optional()
-      .describe('Maximum depth (default: 3)'),
-    filter: tool.schema
-      .string()
-      .optional()
-      .describe('Glob pattern to filter files (e.g., "*.ts")'),
+    depth: tool.schema.number().optional().describe('Maximum depth (default: 3)'),
+    filter: tool.schema.string().optional().describe('Glob pattern to filter files (e.g., "*.ts")'),
     include_hidden: tool.schema
       .boolean()
       .optional()
@@ -87,19 +87,28 @@ export const fileTreeTool = tool({
       throw new Error(`Path not found: ${targetPath}`);
     }
 
+    const displayName = basename(targetPath);
+
     if (!statSync(targetPath).isDirectory()) {
       const stat = statSync(targetPath);
-      return [
-        {
-          name: targetPath.split('/').pop() || targetPath,
-          type: 'file' as const,
-          size: stat.size,
-        },
-      ];
+      const singleFile = {
+        name: displayName,
+        type: 'file' as const,
+        size: stat.size,
+      };
+      return {
+        title: displayName,
+        output: JSON.stringify(singleFile, null, 2),
+        metadata: { entries: [singleFile] },
+      };
     }
 
     const results = walkDir(targetPath, 0, depth, args.filter, args.include_hidden);
     logDebugEvent('file_tree.complete', { path: targetPath, entries: results.length });
-    return results;
+    return {
+      title: displayName,
+      output: JSON.stringify(results, null, 2),
+      metadata: { path: targetPath, count: results.length, tree: results },
+    };
   },
 });

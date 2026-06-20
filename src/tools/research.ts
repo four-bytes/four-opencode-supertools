@@ -15,13 +15,24 @@ export const researchTool = tool({
       .describe("Search scope: 'brain' (local only), 'web' (internet only), or 'both' (default)"),
   },
 
-  async execute(args, ctx) {
+  async execute(args, _rawCtx) {
+    const ctx = _rawCtx as typeof _rawCtx & {
+      callTool(name: string, args: Record<string, unknown>): Promise<unknown>;
+    };
+
     const queries: string[] = JSON.parse(args.queries);
     if (!Array.isArray(queries)) {
       throw new Error('queries must be a JSON array of strings');
     }
+    if (!queries.every((q) => typeof q === 'string')) {
+      throw new Error('queries must be a JSON array of strings (each element must be a string)');
+    }
 
     const scope = args.scope || 'both';
+    const validScopes = ['brain', 'web', 'both'];
+    if (!validScopes.includes(scope)) {
+      throw new Error(`Invalid scope: ${scope}. Must be one of: ${validScopes.join(', ')}`);
+    }
     logDebugEvent('research.start', { queryCount: queries.length, scope });
 
     const results: Array<{ query: string; brain?: unknown[]; web?: unknown[] }> = [];
@@ -62,6 +73,10 @@ export const researchTool = tool({
     }
 
     logDebugEvent('research.complete', { count: results.length });
-    return results;
+    return {
+      title: `Research: ${queries.join(', ').substring(0, 80)}`,
+      output: JSON.stringify(results, null, 2),
+      metadata: { queryCount: queries.length, scope, results },
+    };
   },
 });

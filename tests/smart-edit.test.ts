@@ -46,8 +46,11 @@ describe('smart_edit tool', () => {
       mockCtx()
     );
 
-    expect(result.changed).toBe(true);
-    expect(result.method).toBe('exact');
+    expect(result.metadata.changed).toBe(true);
+    expect(result.metadata.method).toBe('exact');
+    expect(result.title).toMatch(/^Updated /);
+    expect(typeof result.output).toBe('string');
+    expect(result.output.length).toBeGreaterThan(0);
     const content = readFileSync(testFile, 'utf-8');
     expect(content).toContain("return 'universe'");
   });
@@ -64,8 +67,11 @@ describe('smart_edit tool', () => {
       mockCtx()
     );
 
-    expect(result.changed).toBe(true);
-    expect(result.method).toBe('normalized');
+    expect(result.metadata.changed).toBe(true);
+    expect(result.metadata.method).toBe('normalized');
+    expect(result.title).toMatch(/^Updated /);
+    expect(typeof result.output).toBe('string');
+    expect(result.output.length).toBeGreaterThan(0);
     const content = readFileSync(testFile, 'utf-8');
     expect(content).toContain("return 'mars'");
   });
@@ -111,7 +117,7 @@ describe('smart_edit tool', () => {
       mockCtx()
     );
 
-    expect(result.matches).toBe(2);
+    expect(result.metadata.matches).toBe(2);
     const content = readFileSync(testFile, 'utf-8');
     expect(content).toBe('baz\nbaz\nbar\n');
   });
