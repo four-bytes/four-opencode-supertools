@@ -54,7 +54,8 @@ function walkDir(
       });
     } else {
       if (filter) {
-        const regex = new RegExp('^' + filter.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+        const escaped = filter.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp('^' + escaped.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
         if (!regex.test(entry)) continue;
       }
       results.push({ name: entry, type: 'file', size: stat.size });
@@ -65,7 +66,7 @@ function walkDir(
 }
 
 export const fileTreeTool = tool({
-  description: `List directory contents as a structured tree with file sizes. Skips .git, node_modules, vendor by default. Respects .gitignore. Use instead of bash ls/find for parsed output.`,
+  description: `List directory contents as a structured tree with file sizes. Skips .git, node_modules, vendor by default. Use instead of bash ls/find for parsed output.`,
 
   args: {
     path: tool.schema.string().describe('Directory path to list'),

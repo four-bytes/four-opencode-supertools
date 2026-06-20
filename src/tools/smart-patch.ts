@@ -112,9 +112,8 @@ export const smartPatchTool = tool({
         );
       }
 
-      // Apply hunk at bestMatch — replace context+deletions with additions
-      const replacementLen = hunk.context.length + hunk.deletions.length;
-      fileLines.splice(bestMatch, replacementLen, ...hunk.additions);
+      // Apply hunk at bestMatch — replace deletions only, preserve context
+      fileLines.splice(bestMatch + hunk.context.length, hunk.deletions.length, ...hunk.additions);
       offsets.unshift(bestMatch);
     }
 

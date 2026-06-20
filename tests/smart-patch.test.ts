@@ -75,7 +75,7 @@ describe('smart_patch tool', () => {
   });
 
   it('throws on file not found', async () => {
-    expect(
+    await expect(
       smartPatchTool.execute(
         {
           file_path: '/tmp/nonexistent-patch-test.txt',
@@ -87,7 +87,7 @@ describe('smart_patch tool', () => {
   });
 
   it('throws on bad patch with no hunks', async () => {
-    expect(
+    await expect(
       smartPatchTool.execute(
         {
           file_path: testFile,

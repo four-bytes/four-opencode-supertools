@@ -57,6 +57,6 @@ describe('file_tree tool', () => {
   });
 
   it('throws on nonexistent path', async () => {
-    expect(fileTreeTool.execute({ path: '/tmp/nonexistent-file-tree' }, mockCtx())).rejects.toThrow('Path not found');
+    await expect(fileTreeTool.execute({ path: '/tmp/nonexistent-file-tree' }, mockCtx())).rejects.toThrow('Path not found');
   });
 });
