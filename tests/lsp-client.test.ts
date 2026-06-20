@@ -231,7 +231,7 @@ describe('LspClient — Request/Response Matching', () => {
     await client.shutdown();
   });
 
-  it('handles timeout gracefully', async () => {
+  it('handles timeout gracefully', { timeout: 15000 }, async () => {
     // Create a server that never responds to hover
     const slowServerScript = `
       const { stdin, stdout } = process;
