@@ -15,13 +15,24 @@ export const researchTool = tool({
       .describe("Search scope: 'brain' (local only), 'web' (internet only), or 'both' (default)"),
   },
 
-  async execute(args, ctx) {
+  async execute(args, _rawCtx) {
+    const ctx = _rawCtx as typeof _rawCtx & {
+      callTool(name: string, args: Record<string, unknown>): Promise<unknown>;
+    };
+
     const queries: string[] = JSON.parse(args.queries);
     if (!Array.isArray(queries)) {
       throw new Error('queries must be a JSON array of strings');
     }
+    if (!queries.every((q) => typeof q === 'string')) {
+      throw new Error('queries must be a JSON array of strings (each element must be a string)');
+    }
 
     const scope = args.scope || 'both';
+    const validScopes = ['brain', 'web', 'both'];
+    if (!validScopes.includes(scope)) {
+      throw new Error(`Invalid scope: ${scope}. Must be one of: ${validScopes.join(', ')}`);
+    }
     logDebugEvent('research.start', { queryCount: queries.length, scope });
 
     const results: Array<{ query: string; brain?: unknown[]; web?: unknown[] }> = [];
@@ -35,8 +46,7 @@ export const researchTool = tool({
         promises.push(
           (async () => {
             try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const result = await (ctx as any).callTool('brain_search', { query, limit: 5 });
+              const result = await ctx.callTool('brain_search', { query, limit: 5 });
               entry.brain = Array.isArray(result) ? result : [result];
             } catch {
               entry.brain = [];
@@ -49,8 +59,7 @@ export const researchTool = tool({
         promises.push(
           (async () => {
             try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const result = await (ctx as any).callTool('websearch', { query });
+              const result = await ctx.callTool('websearch', { query });
               entry.web = Array.isArray(result) ? result : [result];
             } catch {
               entry.web = [];
