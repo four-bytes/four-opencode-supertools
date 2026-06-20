@@ -70,7 +70,7 @@ export class LspClient {
   openDocuments = new Set<string>();
 
   /** Spawn the LSP server process. */
-  spawn(serverCommand: string[], opts?: { env?: Record<string, string> }): void {
+  spawn(serverCommand: string[], opts?: { env?: Record<string, string>; rootUri?: string }): void {
     if (this.proc) {
       logDebugEvent('lsp.spawn.skip', { reason: 'already-spawned' });
       return;
@@ -89,7 +89,7 @@ export class LspClient {
       logDebugEvent('lsp.spawn.ok', { command: serverCommand[0], pid: this.proc.pid });
 
       // Begin async LSP handshake (initialize + initialized) — non-blocking
-      this._startInit();
+      this._startInit(opts?.rootUri);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       logDebugEvent('lsp.spawn.error', { command: serverCommand[0], error: msg });

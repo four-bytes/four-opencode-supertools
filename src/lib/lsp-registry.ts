@@ -110,7 +110,9 @@ export class LspRegistry {
     let client = this.clients.get(key);
     if (!client || !client.isRunning) {
       client = new LspClient();
-      client.spawn(config.command);
+      // Derive rootUri from the file path's parent directory
+      const rootUri = `file://${filePath.replace(/[/\\][^/\\]*$/, '')}`;
+      client.spawn(config.command, { rootUri });
       if (!client.isRunning) return null;
       this.clients.set(key, client);
       logDebugEvent('lsp.resolve.new-client', {
