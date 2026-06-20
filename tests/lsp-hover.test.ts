@@ -5,7 +5,6 @@ import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { LspClient } from '../src/lib/lsp-client';
 import { lspHoverTool } from '../src/tools/lsp-hover';
 import { resetLspRegistry } from '../src/lib/lsp-registry';
 
@@ -102,7 +101,7 @@ stdin.on('data', (chunk) => {
 
 function registerMockServer(): void {
   resetLspRegistry();
-  const { LspRegistry, getLspRegistry } = require('../src/lib/lsp-registry');
+  const { getLspRegistry } = require('../src/lib/lsp-registry');
   const registry = getLspRegistry();
   registry.register({
     command: ['bun', '-e', MOCK_HOVER_SERVER],
