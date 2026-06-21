@@ -2,7 +2,7 @@
 // Copyright (c) 2025-2026 Four Bytes
 
 import { tool } from '@opencode-ai/plugin';
-import { readdirSync, statSync, existsSync } from 'node:fs';
+import { readdirSync, lstatSync, statSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { logDebugEvent } from '../lib/debug-logger';
 
@@ -34,18 +34,20 @@ function walkDir(
   }
 
   for (const entry of entries.sort()) {
-    if (!includeHidden && entry.startsWith('.') && entry !== '.gitignore') continue;
+    if (!includeHidden && entry.startsWith('.')) continue;
 
     const fullPath = join(dir, entry);
     let stat;
     try {
-      stat = statSync(fullPath);
+      stat = lstatSync(fullPath);
     } catch {
       continue;
     }
 
+    if (stat.isSymbolicLink()) continue;
+
     if (stat.isDirectory()) {
-      if (SKIP_DIRS.has(entry) && !includeHidden) continue;
+      if (SKIP_DIRS.has(entry)) continue;
       const children = walkDir(fullPath, depth + 1, maxDepth, filter, includeHidden);
       results.push({
         name: entry + '/',
@@ -100,7 +102,7 @@ export const fileTreeTool = tool({
       return {
         title: displayName,
         output: JSON.stringify(singleFile, null, 2),
-        metadata: { entries: [singleFile] },
+        metadata: { tree: [singleFile] },
       };
     }
 
