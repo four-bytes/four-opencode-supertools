@@ -109,12 +109,9 @@ describe('file_tree tool', () => {
     writeFileSync(join(testDir, 'target', 'real.txt'), 'real', 'utf-8');
     symlinkSync(join(testDir, 'target'), join(testDir, 'link'));
     const result = await fileTreeTool.execute({ path: testDir, depth: 3 }, mockCtx());
-    const _names = result.metadata.tree.map((n: { name: string }) => n.name);
-    // symlink dir itself may appear but its children must not be recursed
+    // symlinks are skipped entirely to prevent cycles
     const link = result.metadata.tree.find((n: { name: string }) => n.name === 'link/');
-    if (link) {
-      expect(link.children).toBeUndefined();
-    }
+    expect(link).toBeUndefined();
     // target's children should still appear
     const target = result.metadata.tree.find((n: { name: string }) => n.name === 'target/');
     expect(target?.children?.some((c: { name: string }) => c.name === 'real.txt')).toBe(true);
