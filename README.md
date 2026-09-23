@@ -8,7 +8,7 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers **12 tools**. This table mirrors the authoritative tool
+The plugin registers **13 tools**. This table mirrors the authoritative tool
 stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -34,6 +34,12 @@ stack in [AGENTS.md](AGENTS.md).
 | ------------------------- | ------------------------------------------------------------------------ |
 | **`file_tree`**           | Structured directory listing with sizes (skips .git/node_modules/vendor) |
 | **`solution_confidence`** | Score a fix by running the test suite + git blast-radius check directly  |
+
+### Search (1)
+
+| Tool               | Description                                        |
+| ------------------ | -------------------------------------------------- |
+| **`sonar_search`** | Perplexity Sonar web search — answer + citations   |
 
 ### LSP / Structure (3)
 
@@ -75,6 +81,21 @@ Run tests for a specific file and return only failures.
 - `test_file` (string) — Test file to run
 - `filter` (string, optional) — Test name pattern
 - `framework` (string, optional) — `bun`, `phpunit`, `jest`, `vitest`, or `auto`
+
+### `sonar_search`
+
+Web search via Perplexity Sonar using your own account — no Exa rate limits.
+Returns a concise answer plus citation URLs.
+
+**Parameters:**
+
+- `query` (string) — The search query
+- `model` (string, optional) — `sonar` (fast, default) or `sonar-pro` (deeper)
+- `max_tokens` (number, optional) — Max answer tokens (default `1000`)
+
+**Authentication:** resolved in order — `PERPLEXITY_API_KEY` environment variable,
+then the `perplexity.key` entry in opencode's `auth.json`
+(`$XDG_DATA_HOME/opencode/auth.json`, defaulting to `~/.local/share/opencode/auth.json`).
 
 ### `file_outline`
 

@@ -11,6 +11,7 @@ import { smartPatchTool } from './tools/smart-patch';
 import { batchPatchTool } from './tools/batch-patch';
 import { fileTreeTool } from './tools/file-tree';
 import { solutionConfidenceTool } from './tools/solution-confidence';
+import { sonarSearchTool } from './tools/sonar-search';
 
 import { lspReferencesTool } from './tools/lsp-references';
 import { lspHoverTool } from './tools/lsp-hover';
@@ -28,6 +29,7 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       batch_patch: batchPatchTool,
       file_tree: fileTreeTool,
       solution_confidence: solutionConfidenceTool,
+      sonar_search: sonarSearchTool,
       lsp_references: lspReferencesTool,
       lsp_hover: lspHoverTool,
       file_outline: fileOutlineTool,
