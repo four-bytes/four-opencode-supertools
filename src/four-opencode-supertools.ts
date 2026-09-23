@@ -15,6 +15,7 @@ import { solutionConfidenceTool } from './tools/solution-confidence';
 
 import { lspReferencesTool } from './tools/lsp-references';
 import { lspHoverTool } from './tools/lsp-hover';
+import { fileOutlineTool } from './tools/file-outline';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -31,6 +32,7 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       solution_confidence: solutionConfidenceTool,
       lsp_references: lspReferencesTool,
       lsp_hover: lspHoverTool,
+      file_outline: fileOutlineTool,
     },
   };
 };

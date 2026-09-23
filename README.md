@@ -8,48 +8,43 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-### Code Editing & Quality
+The plugin registers **13 tools**. This table mirrors the authoritative tool
+stack in [AGENTS.md](AGENTS.md).
 
-| Tool              | Token Savings | Description                                           |
-| ----------------- | ------------- | ----------------------------------------------------- |
-| **`apply_patch`** | ~90%          | Apply unified diff patch instead of full-file `write` |
-| **`batch_edit`**  | ~80%          | Search and replace across multiple files in one call  |
-| **`lint_file`**   | ~60%          | Run linter on specific file, return errors only       |
-| **`run_tests`**   | ~50%          | Run specific test file, return failures only          |
+### File Editing (4)
 
-### Git Tools
+| Tool              | Token Savings | Description                                          |
+| ----------------- | ------------- | ---------------------------------------------------- |
+| **`batch_edit`**  | ~80%          | Search and replace across multiple files in one call |
+| **`append_file`** | ~95%          | Append or prepend text to a file                     |
+| **`lint_file`**   | ~60%          | Run linter on a specific file, return errors only    |
+| **`run_tests`**   | ~50%          | Run a specific test file, return failures only       |
 
-| Tool                    | Token Savings | Description                                             |
-| ----------------------- | ------------- | ------------------------------------------------------- |
-| **`curse_score`**       | ~90%          | Rank files by risk via curse score algorithm            |
-| **`bus_factor`**        | ~85%          | Ownership concentration per directory                   |
-| **`implicit_coupling`** | ~100%         | Hidden co-change dependencies                           |
-| **`ownership`**         | ~80%          | Author breakdown per file/directory                     |
-| **`blast_radius`**      | ~95%          | Impact analysis — what might break?                     |
-| **`git_diff`**          | ~90%          | Structured git diff output (staged, file, between refs) |
-| **`trend`**             | ~90%          | Curse score trends — files getting more dangerous       |
-| **`pr_risk`**           | ~90%          | Risk assessment of uncommitted changes                  |
-| **`git_log_structured`**| ~50%          | Structured git log with filters                         |
+### Smart Editing (3)
 
-### GitHub PR & GitLab MR Tools
+| Tool              | Description                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| **`smart_edit`**  | Fuzzy string replace with whitespace tolerance                   |
+| **`smart_patch`** | Context-anchored patch ignoring line numbers                     |
+| **`batch_patch`** | Multi-file patch in one call, optional atomic mode with rollback |
 
-| Tool                    | Token Savings | Description                                             |
-| ----------------------- | ------------- | ------------------------------------------------------- |
-| **`gh_pr_create`**      | ~90%          | Create a GitHub pull request                              |
-| **`gh_pr_status`**      | ~90%          | Check PR mergeability — reviews, CI checks, conflicts   |
-| **`gh_pr_comment`**     | ~90%          | Add a comment to a GitHub pull request                    |
-| **`gitlab_mr_create`**  | ~90%          | Create a GitLab merge request                             |
-| **`gitlab_mr_status`**  | ~90%          | Check GitLab MR status — state, mergeability, CI          |
-| **`gitlab_mr_comment`** | ~90%          | Add a comment to a GitLab merge request                   |
+### Meta-Tools (3)
 
-### `apply_patch`
+| Tool                      | Description                                                              |
+| ------------------------- | ------------------------------------------------------------------------ |
+| **`file_tree`**           | Structured directory listing with sizes (skips .git/node_modules/vendor) |
+| **`research`**            | Parallel brain_search + websearch in one call                            |
+| **`solution_confidence`** | Weighted verification scoring (tests + KB match + coverage)              |
 
-Apply a unified diff patch to a file. Uses standard `@@ -old +new @@` format.
+### LSP / Structure (3)
 
-**Parameters:**
+| Tool                 | Token Savings | Description                                                       |
+| -------------------- | ------------- | ----------------------------------------------------------------- |
+| **`file_outline`**   | ~95%          | Structure-only outline (symbols + line numbers), never file bodies |
+| **`lsp_hover`**      | ~95%          | Type info and documentation for a symbol at a position            |
+| **`lsp_references`** | ~90%          | Find all references to a symbol at a position                      |
 
-- `file_path` (string) — Absolute path to the file
-- `patch` (string) — Unified diff patch
+> Git, GitHub and GitLab tools live in the separate `four-opencode-git` plugin.
 
 ### `batch_edit`
 
@@ -82,16 +77,31 @@ Run tests for a specific file and return only failures.
 - `filter` (string, optional) — Test name pattern
 - `framework` (string, optional) — `bun`, `phpunit`, `jest`, `vitest`, or `auto`
 
-### `git_diff`
+### `file_outline`
 
-Get git diff as structured output with file-level summary and line counts. Complements `apply_patch` (produce diff → apply diff).
+Return a structure-only outline of a file — symbol names, kinds and 1-based line
+numbers. **Never returns file contents.** The primary path is the LSP
+`textDocument/documentSymbol` request; if no language server answers (plain config
+files, unsupported languages, timeout) it falls back to a regex scan of top-level
+declarations and marks the header with ` [regex fallback]`.
+
+```
+## src/Four/Fulfillment/InvoiceViews.php (284 lines)
+- class InvoiceViews (L18)
+  - fn getViews() (L42)
+  - fn buildFilter($key) (L156)
+- const DEFAULT_GROUP (L14)
+```
+
+An empty or unreadable file renders as exactly `## <path> (0 lines)`. If the outline
+would exceed ~100 lines across the batch, it is truncated and `… (N more symbols)` is
+appended.
 
 **Parameters:**
 
-- `staged` (boolean, optional) — Show staged changes (`git diff --staged`)
-- `file` (string, optional) — Specific file path to diff
-- `from` (string, optional) — From commit/branch/ref
-- `to` (string, optional) — To commit/branch/ref (defaults to HEAD if from is set)
+- `path` (string) — File to outline (absolute or relative to the project directory)
+- `paths` (string[], optional) — Additional files to outline in the same call (batch)
+- `max_depth` (number, optional) — Maximum nesting depth to include (default: `2`)
 
 ## Install
 
