@@ -28,13 +28,18 @@ stack in [AGENTS.md](AGENTS.md).
 | **`smart_patch`** | Context-anchored patch ignoring line numbers                     |
 | **`batch_patch`** | Multi-file patch in one call, optional atomic mode with rollback |
 
-### Meta-Tools (3)
+### Meta-Tools (2)
 
 | Tool                      | Description                                                              |
 | ------------------------- | ------------------------------------------------------------------------ |
 | **`file_tree`**           | Structured directory listing with sizes (skips .git/node_modules/vendor) |
 | **`solution_confidence`** | Score a fix by running the test suite + git blast-radius check directly  |
-| **`sonar_search`**        | Perplexity Sonar web search — answer + citations                         |
+
+### Search (1)
+
+| Tool               | Description                                        |
+| ------------------ | -------------------------------------------------- |
+| **`sonar_search`** | Perplexity Sonar web search — answer + citations   |
 
 ### LSP / Structure (3)
 

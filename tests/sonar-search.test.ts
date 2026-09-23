@@ -79,4 +79,20 @@ describe('sonar_search tool', () => {
       'query is required'
     );
   });
+
+  it('never leaks the API key in output', async () => {
+    process.env.PERPLEXITY_API_KEY = 'super-secret-key-xyz';
+    mockFetch({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: 'answer' } }],
+        citations: ['https://example.com'],
+      }),
+    });
+
+    const result = await sonarSearchTool.execute({ query: 'leak test' }, {} as never);
+
+    expect(JSON.stringify(result)).not.toContain('super-secret-key-xyz');
+  });
 });

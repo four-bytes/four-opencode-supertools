@@ -19,9 +19,11 @@
 - `smart_patch` — context-anchored patch ignoring line numbers. Sliding-window context search with fuzz tolerance
 - `batch_patch` — multi-file patch in one call. Optional atomic mode: snapshot→apply→rollback on failure
 
-### Meta-Tools (3 tools)
+### Meta-Tools (2 tools)
 - `file_tree` — structured directory listing with sizes. Skips .git/node_modules/vendor by default
 - `solution_confidence` — weighted verification scoring (tests 0.5 + coverage 0.5)
+
+### Search (1 tool)
 - `sonar_search` — Perplexity Sonar web search (sonar fast default / sonar-pro opt-in). Returns answer + citations.
 
 ### LSP / Structure (3 tools)
