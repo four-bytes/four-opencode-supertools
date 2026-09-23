@@ -211,6 +211,15 @@ See [meta-repo ROADMAP.md — Wave G](https://github.com/four-bytes/four-opencod
 - **Logic:** run the project test suite directly with a 120s timeout and captured stdout+stderr → `git status --porcelain` + `git diff --stat HEAD` for blast radius → no brain lookup → weighted score: tests(0.5) + coverage(0.5); errors are reported in an `errors: string[]` field instead of being turned into `null`
 - **Returns:** `{ confidence: number, verdict: "likely_fixed" | "uncertain" | "band_aid", risks: string[], errors: string[], checks: { tests: bool|null, coverage: bool|null } }`
 
+### S5.7 — `sonar_search` — Perplexity Sonar web search
+
+> ✅ DONE (#54). Replaces the rate-limited Exa websearch with the user's own Perplexity account.
+
+- **Gap:** Exa-based websearch is rate-limited and offers no control over depth or model
+- **Args:** `query: string, model?: 'sonar' | 'sonar-pro' (default 'sonar'), max_tokens?: number (default 1000)`
+- **Logic:** resolve API key (`PERPLEXITY_API_KEY` → opencode `auth.json` `perplexity.key`) → validate model against allowlist → POST to `https://api.perplexity.ai/chat/completions` with 30s timeout → surface non-OK status + truncated body as an error → trim answer, default citations to `[]`
+- **Returns:** `{ query, model, answer, citations: string[] }` (also JSON-stringified into `output`)
+
 ---
 
 ## Wave S6 — IDE Integration 🚧

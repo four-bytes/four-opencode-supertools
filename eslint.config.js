@@ -18,6 +18,8 @@ export default tseslint.config(
         sourceType: 'module',
       },
       globals: {
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
         console: 'readonly',
         process: 'readonly',
         Buffer: 'readonly',
