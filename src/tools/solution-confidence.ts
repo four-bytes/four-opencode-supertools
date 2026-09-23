@@ -3,14 +3,61 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { logDebugEvent } from '../lib/debug-logger';
+import { detectFramework, type TestFramework } from './run-tests';
+
+function fullSuiteCommand(framework: TestFramework): string[] {
+  switch (framework) {
+    case 'phpunit':
+      return ['php', 'vendor/bin/phpunit', '--no-coverage'];
+    case 'vitest':
+      return ['bun', 'x', 'vitest', 'run'];
+    case 'jest':
+      return ['bun', 'x', 'jest'];
+    case 'bun':
+    case 'auto':
+    default:
+      return ['bun', 'test'];
+  }
+}
+
+interface CommandResult {
+  exitCode: number;
+  output: string;
+}
+
+async function runWithTimeout(
+  cmd: string[],
+  cwd: string,
+  timeoutMs: number
+): Promise<CommandResult> {
+  const proc = Bun.spawn(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
+
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => {
+      proc.kill();
+      reject(
+        new Error(`Command timed out after ${Math.round(timeoutMs / 1000)}s: ${cmd.join(' ')}`)
+      );
+    }, timeoutMs)
+  );
+
+  const collect = async (): Promise<CommandResult> => {
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    const exitCode = await proc.exited;
+    return { exitCode, output: `${stdout}\n${stderr}` };
+  };
+
+  return Promise.race([collect(), timeout]);
+}
 
 export const solutionConfidenceTool = tool({
-  description: `Score how likely a fix actually resolved the problem. Runs tests, searches brain for matching KB patterns, and checks git blast radius coverage. Returns weighted confidence score.`,
+  description: `Score how likely a fix actually resolved the problem. Runs the project test suite and inspects uncommitted changes via git directly. Reports errors instead of hiding them.`,
 
   args: {
     description: tool.schema
       .string()
-      .describe('Description of the fix — used to find relevant tests and KB entries'),
+      .describe('Description of the fix — used for logging and context'),
     evidence: tool.schema
       .string()
       .optional()
@@ -18,94 +65,89 @@ export const solutionConfidenceTool = tool({
   },
 
   async execute(args, ctx) {
+    const directory = ctx.directory;
     logDebugEvent('solution_confidence.start', { description: args.description.substring(0, 60) });
 
-    let testsPassed: boolean | null = null;
-    let kbMatch: boolean | null;
-    let coverageChecked: boolean | null;
+    const errors: string[] = [];
     const risks: string[] = [];
+    let testsPassed: boolean | null = null;
+    let coverageChecked: boolean | null;
 
-    // 1. Run tests — detect test files from description keywords
+    // 1. Run the test suite directly (captured output + timeout + kill)
     try {
-      const words = args.description.split(/\s+/).filter((w: string) => w.length > 3);
-      const testPattern = words.slice(0, 3).join('|');
-
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const testResult = await (ctx as any).callTool('run_tests', {
-          test_file: '.',
-          filter: testPattern,
-        });
-        if (testResult && typeof testResult === 'object' && 'failures' in (testResult as object)) {
-          testsPassed = (testResult as Record<string, unknown>).failures === 0;
-        }
-      } catch {
-        testsPassed = null;
+      const framework = detectFramework(directory);
+      const { exitCode } = await runWithTimeout(fullSuiteCommand(framework), directory, 120000);
+      testsPassed = exitCode === 0;
+      if (!testsPassed) {
+        risks.push(`Test suite exited with code ${exitCode}`);
       }
-    } catch {
-      testsPassed = null;
+    } catch (err) {
+      errors.push(`tests: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // 2. Search brain for matching KB patterns
+    // 2. Inspect uncommitted changes directly via git (blast radius)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const kbResults = await (ctx as any).callTool('brain_search', {
-        query: args.description,
-        limit: 3,
+      const status = await runWithTimeout(
+        ['git', '-C', directory, 'status', '--porcelain'],
+        directory,
+        15000
+      );
+      if (status.exitCode !== 0) {
+        throw new Error(`git status exited ${status.exitCode}`);
+      }
+      coverageChecked = true;
+      const changed = status.output
+        .trim()
+        .split('\n')
+        .filter((l) => l.trim());
+      const sourceChanged = changed.filter((l) => {
+        const path = l.slice(3).trim();
+        return path !== '' && !/\.(test|spec)\.[a-z0-9]+$/i.test(path);
       });
-      if (Array.isArray(kbResults) && kbResults.length > 0) {
-        const bestMatch = kbResults[0] as Record<string, unknown>;
-        kbMatch = typeof bestMatch.score === 'number' && bestMatch.score > 0.7;
-      } else {
-        kbMatch = false;
-      }
-    } catch {
-      kbMatch = null;
-    }
-
-    // 3. Git coverage check (pr_risk)
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prResult = await (ctx as any).callTool('pr_risk', {});
-      coverageChecked = prResult !== undefined;
-      if (prResult && typeof prResult === 'object') {
-        const riskLevel = (prResult as Record<string, unknown>).risk_level;
-        if (riskLevel === 'high') {
-          risks.push('High blast radius — uncommitted changes touch high-risk files');
+      if (sourceChanged.length > 0) {
+        const diff = await runWithTimeout(
+          ['git', '-C', directory, 'diff', '--stat', 'HEAD'],
+          directory,
+          15000
+        );
+        const statLines = diff.output
+          .trim()
+          .split('\n')
+          .filter((l) => l.trim());
+        const lastLine = statLines.pop() ?? '';
+        const fileCountMatch = lastLine.match(/(\d+) files? changed/);
+        const fileCount = fileCountMatch ? parseInt(fileCountMatch[1], 10) : sourceChanged.length;
+        risks.push(
+          `Uncommitted changes in ${sourceChanged.length} source file(s) — verify tests cover them`
+        );
+        if (fileCount >= 10) {
+          risks.push('High blast radius — uncommitted changes touch many files');
         }
       }
-    } catch {
+    } catch (err) {
       coverageChecked = null;
+      errors.push(`coverage: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // Weighted scoring
-    const weights = { tests: 0.4, kb: 0.3, coverage: 0.3 };
+    // Weighted scoring (tests 0.5 + coverage 0.5). No redistribution: an errored
+    // check must not inflate confidence.
     let score = 0;
-    if (testsPassed === true) score += weights.tests;
-    if (testsPassed === false) score += 0;
-    if (kbMatch === true) score += weights.kb;
-    if (coverageChecked === true) score += weights.coverage;
-
-    // If any check is null, redistribute weight proportionally
-    const activeChecks = [testsPassed !== null, kbMatch !== null, coverageChecked !== null].filter(
-      Boolean
-    ).length;
-    if (activeChecks > 0 && activeChecks < 3) {
-      score = score * (3 / activeChecks);
-      score = Math.min(score, 1.0);
-    }
+    if (testsPassed === true) score += 0.5;
+    if (coverageChecked === true) score += 0.5;
 
     let verdict: 'likely_fixed' | 'uncertain' | 'band_aid';
     if (score >= 0.75) verdict = 'likely_fixed';
     else if (score >= 0.45) verdict = 'uncertain';
     else verdict = 'band_aid';
 
-    logDebugEvent('solution_confidence.complete', { score, verdict });
+    logDebugEvent('solution_confidence.complete', { score, verdict, errorCount: errors.length });
+
     const result = {
       confidence: Math.round(score * 100) / 100,
       verdict,
       risks,
-      checks: { tests: testsPassed, kb_match: kbMatch, coverage: coverageChecked },
+      errors,
+      checks: { tests: testsPassed, coverage: coverageChecked },
     };
     return {
       title: `Confidence: ${result.verdict} (${result.confidence})`,

@@ -6,9 +6,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { logDebugEvent } from '../lib/debug-logger';
 
-type TestFramework = 'bun' | 'phpunit' | 'jest' | 'vitest' | 'auto';
+export type TestFramework = 'bun' | 'phpunit' | 'jest' | 'vitest' | 'auto';
 
-function detectFramework(directory: string): TestFramework {
+export function detectFramework(directory: string): TestFramework {
   // Check for PHP project
   if (existsSync(resolve(directory, 'composer.json'))) {
     return 'phpunit';
