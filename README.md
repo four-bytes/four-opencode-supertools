@@ -8,7 +8,7 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers **13 tools**. This table mirrors the authoritative tool
+The plugin registers **12 tools**. This table mirrors the authoritative tool
 stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -28,13 +28,12 @@ stack in [AGENTS.md](AGENTS.md).
 | **`smart_patch`** | Context-anchored patch ignoring line numbers                     |
 | **`batch_patch`** | Multi-file patch in one call, optional atomic mode with rollback |
 
-### Meta-Tools (3)
+### Meta-Tools (2)
 
 | Tool                      | Description                                                              |
 | ------------------------- | ------------------------------------------------------------------------ |
 | **`file_tree`**           | Structured directory listing with sizes (skips .git/node_modules/vendor) |
-| **`research`**            | Parallel brain_search + websearch in one call                            |
-| **`solution_confidence`** | Weighted verification scoring (tests + KB match + coverage)              |
+| **`solution_confidence`** | Score a fix by running the test suite + git blast-radius check directly  |
 
 ### LSP / Structure (3)
 

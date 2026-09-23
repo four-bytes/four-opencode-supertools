@@ -200,7 +200,9 @@ See [meta-repo ROADMAP.md — Wave G](https://github.com/four-bytes/four-opencod
 - **Logic:** walk recursively to depth; skip `.git`, `node_modules`, `vendor` unless `include_hidden=true`; apply glob filter; respect `.gitignore`
 - **Returns:** `{ name: string, type: "file"|"dir", size?: number, children?: [...] }[]`
 
-### S5.5 — `research` — brain + web in one call
+### [REMOVED] S5.5 — `research` — brain + web in one call
+
+> Removed in #52 — plugins cannot call other tools via ctx.callTool; agents call websearch + brain_search directly.
 
 - **Gap:** agents do `brain_search` + separate `websearch` + `webfetch` = 3+ round trips
 - **Args:** `queries: string[], scope?: "brain" | "web" | "both" (default "both")`
@@ -211,8 +213,8 @@ See [meta-repo ROADMAP.md — Wave G](https://github.com/four-bytes/four-opencod
 
 - **Gap:** no structured way to verify a fix beyond "tests pass"
 - **Args:** `description: string, evidence?: string[]`
-- **Logic:** `run_tests` (detect test files via glob on description keywords) → `brain_search` for matching KB patterns (score > 0.7 + `review_state === "accepted"`) → `pr_risk` on staged changes if git available → weighted score: tests(0.4) + kb_match(0.3) + coverage(0.3)
-- **Returns:** `{ confidence: number, verdict: "likely_fixed" | "uncertain" | "band_aid", risks: string[], checks: { tests: bool|null, kb_match: bool|null, coverage: bool|null } }`
+- **Logic:** run the project test suite directly via `Bun.$` → `git status --porcelain` + `git diff --stat HEAD` for blast radius → no brain lookup → weighted score: tests(0.5) + coverage(0.5); errors are reported in an `errors: string[]` field instead of being turned into `null`
+- **Returns:** `{ confidence: number, verdict: "likely_fixed" | "uncertain" | "band_aid", risks: string[], errors: string[], checks: { tests: bool|null, coverage: bool|null } }`
 
 ---
 

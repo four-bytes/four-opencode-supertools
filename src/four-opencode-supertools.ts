@@ -10,7 +10,6 @@ import { smartEditTool } from './tools/smart-edit';
 import { smartPatchTool } from './tools/smart-patch';
 import { batchPatchTool } from './tools/batch-patch';
 import { fileTreeTool } from './tools/file-tree';
-import { researchTool } from './tools/research';
 import { solutionConfidenceTool } from './tools/solution-confidence';
 
 import { lspReferencesTool } from './tools/lsp-references';
@@ -28,7 +27,6 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       smart_patch: smartPatchTool,
       batch_patch: batchPatchTool,
       file_tree: fileTreeTool,
-      research: researchTool,
       solution_confidence: solutionConfidenceTool,
       lsp_references: lspReferencesTool,
       lsp_hover: lspHoverTool,
