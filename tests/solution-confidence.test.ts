@@ -61,6 +61,8 @@ describe('solution_confidence tool', () => {
     expect(result.metadata.errors.length).toBeGreaterThan(0); // temp dir is not a git repo
     expect(result).toHaveProperty('title');
     expect(typeof result.output).toBe('string');
+    expect(result.metadata.verdict).toBe('uncertain');
+    expect(result.metadata.confidence).toBe(0.5);
   });
 
   it('returns band_aid when tests fail', async () => {

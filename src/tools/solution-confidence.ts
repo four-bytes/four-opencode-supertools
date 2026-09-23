@@ -20,6 +20,37 @@ function fullSuiteCommand(framework: TestFramework): string[] {
   }
 }
 
+interface CommandResult {
+  exitCode: number;
+  output: string;
+}
+
+async function runWithTimeout(
+  cmd: string[],
+  cwd: string,
+  timeoutMs: number
+): Promise<CommandResult> {
+  const proc = Bun.spawn(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
+
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => {
+      proc.kill();
+      reject(
+        new Error(`Command timed out after ${Math.round(timeoutMs / 1000)}s: ${cmd.join(' ')}`)
+      );
+    }, timeoutMs)
+  );
+
+  const collect = async (): Promise<CommandResult> => {
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    const exitCode = await proc.exited;
+    return { exitCode, output: `${stdout}\n${stderr}` };
+  };
+
+  return Promise.race([collect(), timeout]);
+}
+
 export const solutionConfidenceTool = tool({
   description: `Score how likely a fix actually resolved the problem. Runs the project test suite and inspects uncommitted changes via git directly. Reports errors instead of hiding them.`,
 
@@ -42,14 +73,13 @@ export const solutionConfidenceTool = tool({
     let testsPassed: boolean | null = null;
     let coverageChecked: boolean | null;
 
-    // 1. Run the test suite directly
+    // 1. Run the test suite directly (captured output + timeout + kill)
     try {
       const framework = detectFramework(directory);
-      const cmd = fullSuiteCommand(framework);
-      const proc = await Bun.$`${cmd}`.cwd(directory).nothrow();
-      testsPassed = proc.exitCode === 0;
+      const { exitCode } = await runWithTimeout(fullSuiteCommand(framework), directory, 120000);
+      testsPassed = exitCode === 0;
       if (!testsPassed) {
-        risks.push(`Test suite exited with code ${proc.exitCode}`);
+        risks.push(`Test suite exited with code ${exitCode}`);
       }
     } catch (err) {
       errors.push(`tests: ${err instanceof Error ? err.message : String(err)}`);
@@ -57,13 +87,16 @@ export const solutionConfidenceTool = tool({
 
     // 2. Inspect uncommitted changes directly via git (blast radius)
     try {
-      const status = await Bun.$`git -C ${directory} status --porcelain`.nothrow();
+      const status = await runWithTimeout(
+        ['git', '-C', directory, 'status', '--porcelain'],
+        directory,
+        15000
+      );
       if (status.exitCode !== 0) {
         throw new Error(`git status exited ${status.exitCode}`);
       }
       coverageChecked = true;
-      const changed = status.stdout
-        .toString()
+      const changed = status.output
         .trim()
         .split('\n')
         .filter((l) => l.trim());
@@ -72,9 +105,12 @@ export const solutionConfidenceTool = tool({
         return path !== '' && !/\.(test|spec)\.[a-z0-9]+$/i.test(path);
       });
       if (sourceChanged.length > 0) {
-        const diff = await Bun.$`git -C ${directory} diff --stat HEAD`.nothrow();
-        const statLines = diff.stdout
-          .toString()
+        const diff = await runWithTimeout(
+          ['git', '-C', directory, 'diff', '--stat', 'HEAD'],
+          directory,
+          15000
+        );
+        const statLines = diff.output
           .trim()
           .split('\n')
           .filter((l) => l.trim());
@@ -93,17 +129,11 @@ export const solutionConfidenceTool = tool({
       errors.push(`coverage: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // Weighted scoring (tests 0.5 + coverage 0.5)
-    const weights = { tests: 0.5, coverage: 0.5 };
+    // Weighted scoring (tests 0.5 + coverage 0.5). No redistribution: an errored
+    // check must not inflate confidence.
     let score = 0;
-    if (testsPassed === true) score += weights.tests;
-    if (coverageChecked === true) score += weights.coverage;
-
-    const activeChecks = [testsPassed !== null, coverageChecked !== null].filter(Boolean).length;
-    if (activeChecks > 0) {
-      score = score * (2 / activeChecks);
-      score = Math.min(score, 1.0);
-    }
+    if (testsPassed === true) score += 0.5;
+    if (coverageChecked === true) score += 0.5;
 
     let verdict: 'likely_fixed' | 'uncertain' | 'band_aid';
     if (score >= 0.75) verdict = 'likely_fixed';

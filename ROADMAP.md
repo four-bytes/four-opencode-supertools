@@ -204,16 +204,11 @@ See [meta-repo ROADMAP.md — Wave G](https://github.com/four-bytes/four-opencod
 
 > Removed in #52 — plugins cannot call other tools via ctx.callTool; agents call websearch + brain_search directly.
 
-- **Gap:** agents do `brain_search` + separate `websearch` + `webfetch` = 3+ round trips
-- **Args:** `queries: string[], scope?: "brain" | "web" | "both" (default "both")`
-- **Logic:** run in parallel per query: brain via `ctx.callTool("brain_search", { query })`, web via native websearch; merge + deduplicate
-- **Returns:** `Array<{ query: string, brain: Result[], web: Result[] }>`
-
 ### S5.6 — `solution_confidence` — verification scoring
 
 - **Gap:** no structured way to verify a fix beyond "tests pass"
 - **Args:** `description: string, evidence?: string[]`
-- **Logic:** run the project test suite directly via `Bun.$` → `git status --porcelain` + `git diff --stat HEAD` for blast radius → no brain lookup → weighted score: tests(0.5) + coverage(0.5); errors are reported in an `errors: string[]` field instead of being turned into `null`
+- **Logic:** run the project test suite directly with a 120s timeout and captured stdout+stderr → `git status --porcelain` + `git diff --stat HEAD` for blast radius → no brain lookup → weighted score: tests(0.5) + coverage(0.5); errors are reported in an `errors: string[]` field instead of being turned into `null`
 - **Returns:** `{ confidence: number, verdict: "likely_fixed" | "uncertain" | "band_aid", risks: string[], errors: string[], checks: { tests: bool|null, coverage: bool|null } }`
 
 ---
