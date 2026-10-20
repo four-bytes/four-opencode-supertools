@@ -3,11 +3,14 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { existsSync } from 'node:fs';
-import { extname } from 'node:path';
+import { extname, resolve } from 'node:path';
 import { $ } from 'bun';
 import { logDebugEvent } from '../lib/debug-logger';
+import { findGoModuleRoot, goPackageTarget } from '../lib/go-module';
 
-type LinterType = 'eslint' | 'phpstan' | 'pint' | 'ruff' | 'auto';
+export { findGoModuleRoot };
+
+type LinterType = 'eslint' | 'phpstan' | 'pint' | 'ruff' | 'golangci' | 'auto';
 
 function detectLinter(filePath: string): LinterType {
   const ext = extname(filePath).toLowerCase();
@@ -22,16 +25,27 @@ function detectLinter(filePath: string): LinterType {
       return 'phpstan';
     case '.py':
       return 'ruff';
+    case '.go':
+      return 'golangci';
     default:
       return 'eslint'; // default
   }
 }
 
-function buildLintCommand(
+export function buildLintCommand(
   linter: LinterType,
-  filePath: string
+  filePath: string,
+  moduleRoot?: string
 ): { cmd: string[]; timeout: number } {
   switch (linter) {
+    case 'golangci': {
+      // Go lints packages, not files: lint the package directory of the file.
+      const target = goPackageTarget(moduleRoot ?? findGoModuleRoot(filePath) ?? '.', filePath);
+      return {
+        cmd: ['golangci-lint', 'run', '--show-stats=false', target],
+        timeout: 120000,
+      };
+    }
     case 'eslint':
       return { cmd: ['bun', 'x', 'eslint', filePath, '--format', 'stylish'], timeout: 30000 };
     case 'phpstan':
@@ -91,6 +105,7 @@ Auto-detects the appropriate linter based on file extension:
 - .ts/.tsx/.js/.jsx → ESLint
 - .php → PHPStan (or pint with linter: "pint")
 - .py → Ruff
+- .go → golangci-lint (lints the file's package, run from the nearest go.mod)
 
 Returns structured output: error count, warning count, and formatted error list.`,
 
@@ -100,7 +115,7 @@ Returns structured output: error count, warning count, and formatted error list.
       .string()
       .optional()
       .describe(
-        'Override auto-detection: "eslint", "phpstan", "pint", "ruff", or "auto" (default)'
+        'Override auto-detection: "eslint", "phpstan", "pint", "ruff", "golangci", or "auto" (default)'
       ),
   },
 
@@ -120,7 +135,15 @@ Returns structured output: error count, warning count, and formatted error list.
       const linter: LinterType = (linterArg as LinterType) || detectLinter(file_path);
 
       // 3. Build and run command
-      const { cmd, timeout } = buildLintCommand(linter, file_path);
+      let cwd = directory;
+      if (linter === 'golangci') {
+        const moduleRoot = findGoModuleRoot(resolve(directory, file_path));
+        if (!moduleRoot) {
+          return `Error: No go.mod found above ${file_path}`;
+        }
+        cwd = moduleRoot;
+      }
+      const { cmd, timeout } = buildLintCommand(linter, file_path, cwd);
 
       logDebugEvent('lint_file.command', { cmd: cmd.join(' '), linter });
 
@@ -128,13 +151,13 @@ Returns structured output: error count, warning count, and formatted error list.
       let exitCode: number | null;
 
       try {
-        const result = await $`${cmd}`.cwd(directory).quiet().nothrow();
+        const result = await $`${cmd}`.cwd(cwd).quiet().nothrow();
         output = result.stdout.toString() + result.stderr.toString();
         exitCode = result.exitCode;
       } catch {
         // Fall back to Bun.spawn if bun shell fails
         const proc = Bun.spawn(cmd, {
-          cwd: directory,
+          cwd,
           stdout: 'pipe',
           stderr: 'pipe',
         });
@@ -175,6 +198,9 @@ Returns structured output: error count, warning count, and formatted error list.
           }
           result = lines.join('\n');
         }
+      } else if (linter === 'golangci' && exitCode !== 0 && exitCode !== 1) {
+        // golangci-lint: 1 = issues found; anything else is a config, load or run failure
+        result = `Error: golangci-lint failed (exit ${exitCode}) for ${file_path}:\n${output.trim()}`;
       } else {
         // Generic handling for other linters
         const lines = output.split('\n').filter((l) => l.trim().length > 0);

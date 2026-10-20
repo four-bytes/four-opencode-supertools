@@ -10,8 +10,8 @@
 ## Tool Stack (13 tools)
 ### File Editing (4 tools)
 - `batch_edit` — grep→replace across N files. Saves ~80% tokens vs. grep→read→edit×N
-- `lint_file` — run linter, return errors+warnings. Auto-detects eslint/phpstan/ruff. Saves ~60% tokens
-- `run_tests` — run test file, return failures only. Auto-detects bun/phpunit/jest. Saves ~50% tokens
+- `lint_file` — run linter, return errors+warnings. Auto-detects eslint/phpstan/ruff/golangci-lint (Go: package of the file). Saves ~60% tokens
+- `run_tests` — run test file, return failures only. Auto-detects bun/phpunit/jest/vitest/go test. Saves ~50% tokens
 - `append_file` — append/prepend text to file. Saves ~95% tokens vs. patch for simple additions
 
 ### Smart Editing (3 tools)
