@@ -65,22 +65,22 @@ Search and replace across multiple files matching a glob pattern.
 
 ### `lint_file`
 
-Run appropriate linter on a file and return only errors/warnings.
+Run appropriate linter on a file and return only errors/warnings. For `.go` files golangci-lint (v2) lints the file's package from the nearest `go.mod`; `govet` and `staticcheck` are part of its standard set.
 
 **Parameters:**
 
 - `file_path` (string) — File to lint
-- `linter` (string, optional) — `eslint`, `phpstan`, `pint`, `ruff`, or `auto`
+- `linter` (string, optional) — `eslint`, `phpstan`, `pint`, `ruff`, `golangci`, or `auto`
 
 ### `run_tests`
 
-Run tests for a specific file and return only failures.
+Run tests for a specific file and return only failures. In a Go module (`go.mod` in the project directory) it runs `go test` on the package of the given `_test.go` file.
 
 **Parameters:**
 
 - `test_file` (string) — Test file to run
 - `filter` (string, optional) — Test name pattern
-- `framework` (string, optional) — `bun`, `phpunit`, `jest`, `vitest`, or `auto`
+- `framework` (string, optional) — `bun`, `phpunit`, `jest`, `vitest`, `go`, or `auto`
 
 ### `sonar_search`
 

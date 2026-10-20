@@ -3,15 +3,19 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { logDebugEvent } from '../lib/debug-logger';
 
-export type TestFramework = 'bun' | 'phpunit' | 'jest' | 'vitest' | 'auto';
+export type TestFramework = 'bun' | 'phpunit' | 'jest' | 'vitest' | 'go' | 'auto';
 
 export function detectFramework(directory: string): TestFramework {
   // Check for PHP project
   if (existsSync(resolve(directory, 'composer.json'))) {
     return 'phpunit';
+  }
+  // Check for Go module
+  if (existsSync(resolve(directory, 'go.mod'))) {
+    return 'go';
   }
   // Check for Bun project
   if (
@@ -34,12 +38,21 @@ export function detectFramework(directory: string): TestFramework {
   return 'bun';
 }
 
-function buildTestCommand(
+export function buildTestCommand(
   framework: TestFramework,
   testFile: string,
-  filter?: string
+  filter?: string,
+  directory?: string
 ): { cmd: string[]; timeout: number } {
   switch (framework) {
+    case 'go': {
+      // go test runs packages: test the package directory of the given _test.go file.
+      const pkgDir = directory ? relative(directory, dirname(testFile)) : dirname(testFile);
+      const target = pkgDir === '' ? '.' : pkgDir.startsWith('.') ? pkgDir : `./${pkgDir}`;
+      const cmd = ['go', 'test', '-count=1', target];
+      if (filter) cmd.push('-run', filter);
+      return { cmd, timeout: 300000 };
+    }
     case 'bun':
       if (filter) {
         return { cmd: ['bun', 'test', '--filter', filter, '--reporter', 'junit'], timeout: 120000 };
@@ -72,6 +85,36 @@ function buildTestCommand(
     default:
       return { cmd: ['bun', 'test', testFile], timeout: 120000 };
   }
+}
+
+// go test plain output: "ok" / "FAIL" package lines, "--- FAIL:" per test, indented details.
+export function parseGoTestOutput(output: string, exitCode: number | null): string {
+  const lines = output.split('\n').filter((l) => l.trim());
+  if (exitCode === 0) {
+    const okLines = lines.filter((l) => l.startsWith('ok') || l.includes('[no test files]'));
+    return `✅ ${okLines.join('\n') || 'All tests passed'}`;
+  }
+
+  const relevant: string[] = [];
+  let inFailure = false;
+  for (const line of lines) {
+    if (line.startsWith('--- FAIL') || line.startsWith('FAIL') || line.startsWith('panic:')) {
+      relevant.push(line);
+      inFailure = line.startsWith('--- FAIL') || line.startsWith('panic:');
+    } else if (line.startsWith('# ') || /^\S+\.go:\d+:\d+: /.test(line)) {
+      // build errors: package header and file:line:col messages
+      relevant.push(line);
+    } else if (inFailure && /^\s/.test(line)) {
+      relevant.push(line);
+    } else {
+      inFailure = false;
+    }
+  }
+
+  if (relevant.length === 0) {
+    return `Test run failed (exit ${exitCode}):\n${lines.slice(-20).join('\n')}`;
+  }
+  return `Test results: FAILED\n\n${relevant.join('\n')}`;
 }
 
 function parseTestOutput(output: string): string {
@@ -167,6 +210,7 @@ Auto-detects the test framework from project configuration:
 - bun test (Bun projects)
 - phpunit (PHP/composer projects)
 - vitest / jest (package.json detection)
+- go test (go.mod; runs the package of the given _test.go file)
 
 Returns structured output: pass/fail counts, failure details, execution time.`,
 
@@ -179,7 +223,9 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
     framework: tool.schema
       .string()
       .optional()
-      .describe('Override auto-detection: "bun", "phpunit", "jest", "vitest", or "auto" (default)'),
+      .describe(
+        'Override auto-detection: "bun", "phpunit", "jest", "vitest", "go", or "auto" (default)'
+      ),
   },
 
   async execute(args, ctx) {
@@ -199,7 +245,7 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
         (frameworkArg as TestFramework) || detectFramework(directory);
 
       // 3. Build and run command
-      const { cmd, timeout } = buildTestCommand(framework, test_file, filter);
+      const { cmd, timeout } = buildTestCommand(framework, test_file, filter, directory);
 
       logDebugEvent('run_tests.command', { cmd: cmd.join(' '), framework });
 
@@ -236,7 +282,8 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
       }
 
       // 5. Parse and format output
-      const result = parseTestOutput(output);
+      const result =
+        framework === 'go' ? parseGoTestOutput(output, await proc.exited) : parseTestOutput(output);
 
       logDebugEvent('run_tests.complete', {
         test_file,
