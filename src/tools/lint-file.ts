@@ -3,9 +3,12 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { existsSync } from 'node:fs';
-import { dirname, extname, join, relative } from 'node:path';
+import { extname, resolve } from 'node:path';
 import { $ } from 'bun';
 import { logDebugEvent } from '../lib/debug-logger';
+import { findGoModuleRoot, goPackageTarget } from '../lib/go-module';
+
+export { findGoModuleRoot };
 
 type LinterType = 'eslint' | 'phpstan' | 'pint' | 'ruff' | 'golangci' | 'auto';
 
@@ -29,17 +32,6 @@ function detectLinter(filePath: string): LinterType {
   }
 }
 
-// Nearest directory above the file that holds a go.mod; Go tools run from there.
-export function findGoModuleRoot(filePath: string): string | null {
-  let dir = dirname(filePath);
-  for (;;) {
-    if (existsSync(join(dir, 'go.mod'))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
-}
-
 export function buildLintCommand(
   linter: LinterType,
   filePath: string,
@@ -48,8 +40,7 @@ export function buildLintCommand(
   switch (linter) {
     case 'golangci': {
       // Go lints packages, not files: lint the package directory of the file.
-      const pkgDir = moduleRoot ? relative(moduleRoot, dirname(filePath)) : dirname(filePath);
-      const target = pkgDir === '' ? '.' : pkgDir.startsWith('.') ? pkgDir : `./${pkgDir}`;
+      const target = goPackageTarget(moduleRoot ?? findGoModuleRoot(filePath) ?? '.', filePath);
       return {
         cmd: ['golangci-lint', 'run', '--show-stats=false', target],
         timeout: 120000,
@@ -146,7 +137,7 @@ Returns structured output: error count, warning count, and formatted error list.
       // 3. Build and run command
       let cwd = directory;
       if (linter === 'golangci') {
-        const moduleRoot = findGoModuleRoot(file_path);
+        const moduleRoot = findGoModuleRoot(resolve(directory, file_path));
         if (!moduleRoot) {
           return `Error: No go.mod found above ${file_path}`;
         }
@@ -207,6 +198,9 @@ Returns structured output: error count, warning count, and formatted error list.
           }
           result = lines.join('\n');
         }
+      } else if (linter === 'golangci' && exitCode !== 0 && exitCode !== 1) {
+        // golangci-lint: 1 = issues found; anything else is a config, load or run failure
+        result = `Error: golangci-lint failed (exit ${exitCode}) for ${file_path}:\n${output.trim()}`;
       } else {
         // Generic handling for other linters
         const lines = output.split('\n').filter((l) => l.trim().length > 0);

@@ -149,6 +149,26 @@ describe('run_tests Go support', () => {
     expect(cmd).toEqual(['go', 'test', '-count=1', './calc', '-run', 'TestAdd']);
   });
 
+  it('detects go from a _test.go file when go.mod is in a subdirectory', () => {
+    const outer = join(testDir, '..', `supertools-outer-${Date.now()}`);
+    mkdirSync(join(outer, 'api', 'calc'), { recursive: true });
+    writeFileSync(join(outer, 'composer.json'), '{}', 'utf-8');
+    writeFileSync(join(outer, 'api', 'go.mod'), 'module example.com/api\n\ngo 1.22\n', 'utf-8');
+    const file = join(outer, 'api', 'calc', 'calc_test.go');
+    expect(detectFramework(outer, file)).toBe('go');
+    rmSync(outer, { recursive: true });
+  });
+
+  it('keeps a dot-prefixed package directory relative', () => {
+    const { cmd } = buildTestCommand(
+      'go',
+      join(testDir, '.tools', 'x_test.go'),
+      undefined,
+      testDir
+    );
+    expect(cmd).toEqual(['go', 'test', '-count=1', './.tools']);
+  });
+
   it('parses a passing run', () => {
     expect(parseGoTestOutput('ok  \texample.com/demo/calc\t0.002s\n', 0)).toStartWith('✅ ok');
   });

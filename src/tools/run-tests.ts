@@ -3,12 +3,17 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { logDebugEvent } from '../lib/debug-logger';
+import { findGoModuleRoot, goPackageTarget } from '../lib/go-module';
 
 export type TestFramework = 'bun' | 'phpunit' | 'jest' | 'vitest' | 'go' | 'auto';
 
-export function detectFramework(directory: string): TestFramework {
+export function detectFramework(directory: string, testFile?: string): TestFramework {
+  // A _test.go file inside a Go module is always go test, wherever the go.mod sits
+  if (testFile?.endsWith('_test.go') && findGoModuleRoot(testFile)) {
+    return 'go';
+  }
   // Check for PHP project
   if (existsSync(resolve(directory, 'composer.json'))) {
     return 'phpunit';
@@ -47,8 +52,7 @@ export function buildTestCommand(
   switch (framework) {
     case 'go': {
       // go test runs packages: test the package directory of the given _test.go file.
-      const pkgDir = directory ? relative(directory, dirname(testFile)) : dirname(testFile);
-      const target = pkgDir === '' ? '.' : pkgDir.startsWith('.') ? pkgDir : `./${pkgDir}`;
+      const target = goPackageTarget(directory ?? findGoModuleRoot(testFile) ?? '.', testFile);
       const cmd = ['go', 'test', '-count=1', target];
       if (filter) cmd.push('-run', filter);
       return { cmd, timeout: 300000 };
@@ -242,26 +246,29 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
 
       // 2. Determine framework
       const framework: TestFramework =
-        (frameworkArg as TestFramework) || detectFramework(directory);
+        (frameworkArg as TestFramework) || detectFramework(directory, test_file);
 
       // 3. Build and run command
-      const { cmd, timeout } = buildTestCommand(framework, test_file, filter, directory);
+      // Go: run from the module root of the test file, not from the project directory
+      const cwd = framework === 'go' ? (findGoModuleRoot(test_file) ?? directory) : directory;
+      const { cmd, timeout } = buildTestCommand(framework, test_file, filter, cwd);
 
       logDebugEvent('run_tests.command', { cmd: cmd.join(' '), framework });
 
       // 4. Run tests with timeout
       const proc = Bun.spawn(cmd, {
-        cwd: directory,
+        cwd,
         stdout: 'pipe',
         stderr: 'pipe',
       });
 
-      const timeoutPromise = new Promise<string>((_, reject) =>
-        setTimeout(() => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<string>((_, reject) => {
+        timer = setTimeout(() => {
           proc.kill();
           reject(new Error(`Test execution timed out after ${timeout / 1000}s`));
-        }, timeout)
-      );
+        }, timeout);
+      });
 
       let output: string;
       try {
@@ -279,6 +286,8 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
           return `Error: Test execution timed out after ${timeout / 1000}s for ${test_file}`;
         }
         throw err;
+      } finally {
+        clearTimeout(timer);
       }
 
       // 5. Parse and format output
