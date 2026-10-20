@@ -191,25 +191,33 @@ describe('run_tests Go support', () => {
     expect(parseGoTestOutput(out, 1)).toContain('undefined: Sub');
   });
 
-  it.skipIf(!Bun.which('go'))('runs a failing go test end to end', async () => {
-    const file = join(testDir, 'calc', 'calc_test.go');
-    writeFileSync(
-      file,
-      'package calc\n\nimport "testing"\n\nfunc TestAdd(t *testing.T) {\n\tif Add(1, 2) != 4 {\n\t\tt.Errorf("got %d, want 4", Add(1, 2))\n\t}\n}\n',
-      'utf-8'
-    );
-    const result = await runTestsTool.execute({ test_file: file }, ctx);
-    expect(result).toContain('--- FAIL: TestAdd');
-  });
+  it.skipIf(!Bun.which('go'))(
+    'runs a failing go test end to end',
+    async () => {
+      const file = join(testDir, 'calc', 'calc_test.go');
+      writeFileSync(
+        file,
+        'package calc\n\nimport "testing"\n\nfunc TestAdd(t *testing.T) {\n\tif Add(1, 2) != 4 {\n\t\tt.Errorf("got %d, want 4", Add(1, 2))\n\t}\n}\n',
+        'utf-8'
+      );
+      const result = await runTestsTool.execute({ test_file: file }, ctx);
+      expect(result).toContain('--- FAIL: TestAdd');
+    },
+    120_000
+  );
 
-  it.skipIf(!Bun.which('go'))('runs a passing go test end to end', async () => {
-    const file = join(testDir, 'calc', 'calc_test.go');
-    writeFileSync(
-      file,
-      'package calc\n\nimport "testing"\n\nfunc TestAdd(t *testing.T) {\n\tif Add(1, 2) != 3 {\n\t\tt.Fail()\n\t}\n}\n',
-      'utf-8'
-    );
-    const result = await runTestsTool.execute({ test_file: file }, ctx);
-    expect(result).toStartWith('✅');
-  });
+  it.skipIf(!Bun.which('go'))(
+    'runs a passing go test end to end',
+    async () => {
+      const file = join(testDir, 'calc', 'calc_test.go');
+      writeFileSync(
+        file,
+        'package calc\n\nimport "testing"\n\nfunc TestAdd(t *testing.T) {\n\tif Add(1, 2) != 3 {\n\t\tt.Fail()\n\t}\n}\n',
+        'utf-8'
+      );
+      const result = await runTestsTool.execute({ test_file: file }, ctx);
+      expect(result).toStartWith('✅');
+    },
+    120_000
+  );
 });

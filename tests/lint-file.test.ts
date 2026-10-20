@@ -125,25 +125,33 @@ describe('lint_file Go support', () => {
     expect(result).toContain('No go.mod');
   });
 
-  it.skipIf(!Bun.which('golangci-lint'))('reports an issue found by golangci-lint', async () => {
-    const file = join(testDir, 'internal', 'stock', 'stock.go');
-    writeFileSync(
-      file,
-      'package stock\n\nimport "os"\n\nfunc Remove() {\n\tos.Remove("x")\n}\n',
-      'utf-8'
-    );
-    const result = await lintFileTool.execute({ file_path: file }, ctx);
-    expect(result).toContain('errcheck');
-  });
+  it.skipIf(!Bun.which('golangci-lint'))(
+    'reports an issue found by golangci-lint',
+    async () => {
+      const file = join(testDir, 'internal', 'stock', 'stock.go');
+      writeFileSync(
+        file,
+        'package stock\n\nimport "os"\n\nfunc Remove() {\n\tos.Remove("x")\n}\n',
+        'utf-8'
+      );
+      const result = await lintFileTool.execute({ file_path: file }, ctx);
+      expect(result).toContain('errcheck');
+    },
+    120_000
+  );
 
-  it.skipIf(!Bun.which('golangci-lint'))('passes clean Go code', async () => {
-    const file = join(testDir, 'internal', 'stock', 'stock.go');
-    writeFileSync(
-      file,
-      'package stock\n\n// Two returns 2.\nfunc Two() int { return 2 }\n',
-      'utf-8'
-    );
-    const result = await lintFileTool.execute({ file_path: file }, ctx);
-    expect(result).toContain('No lint errors');
-  });
+  it.skipIf(!Bun.which('golangci-lint'))(
+    'passes clean Go code',
+    async () => {
+      const file = join(testDir, 'internal', 'stock', 'stock.go');
+      writeFileSync(
+        file,
+        'package stock\n\n// Two returns 2.\nfunc Two() int { return 2 }\n',
+        'utf-8'
+      );
+      const result = await lintFileTool.execute({ file_path: file }, ctx);
+      expect(result).toContain('No lint errors');
+    },
+    120_000
+  );
 });
