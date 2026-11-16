@@ -2,6 +2,9 @@ name: PR Check
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'package.json'
+      - 'bun.lock'
 jobs:
   check:
     runs-on: ubuntu-latest
