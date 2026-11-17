@@ -7,7 +7,7 @@
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Test: `bun test`
 
-## Tool Stack (13 tools)
+## Tool Stack (16 tools)
 ### File Editing (4 tools)
 - `batch_edit` — grep→replace across N files. Saves ~80% tokens vs. grep→read→edit×N
 - `lint_file` — run linter, return errors+warnings. Auto-detects eslint/phpstan/ruff/golangci-lint (Go: package of the file). Saves ~60% tokens
@@ -31,14 +31,20 @@
 - `lsp_hover` — type info + docs for a symbol via LSP. Saves ~95% tokens vs reading source
 - `file_outline` — structure-only outline (symbols + line numbers) via LSP, regex fallback. Never returns file contents. Saves ~95% tokens
 
+### AST / PHP Refactoring (3 tools)
+- `extract_method` — extract complete statements into a new method. Rejects partial statements, return/yield/goto, escaping break/continue, static `$this`, and values that escape
+- `rename_symbol` — rename one declaration + provably same-scope references in a single file (structural tree-sitter matching; NOT semantic cross-file resolution). `line` disambiguates duplicates; variables require `line`
+- `move_class` — move a class-like declaration; copies the source `declare()` block verbatim, copies referenced `use` imports, resolves the namespace from `composer.json` PSR-4 or an explicit `namespace`; never overwrites a non-empty target
+
 ## Architecture
-- Entry: `src/four-opencode-supertools.ts` — registers all 13 tools
+- Entry: `src/four-opencode-supertools.ts` — registers all 16 tools
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
-- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts
-- Tests: `tests/` — 132 tests, bun-native
+- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
+- Tests: `tests/` — 182 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)
+- `web-tree-sitter` + `tree-sitter-php` (AST tools; wasm copied into `dist/` by the build)
 - Bun runtime, ESM modules
 
 - **Console logging:** Plugins MUST use `_client?.app?.log()` for all logging in plugin mode — `console.log` / `console.warn` / `console.error` is ONLY permitted for the initial startup `"init"` message. Console output in plugin mode breaks the terminal UI.
