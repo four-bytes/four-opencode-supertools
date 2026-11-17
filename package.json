@@ -20,10 +20,7 @@
     "access": "public"
   },
   "license": "Apache-2.0",
-  "author": {
-    "name": "Robby Beyer",
-    "email": "<EMAIL_1>"
-  },
+  "author": "Four Bytes",
   "scripts": {
     "postinstall": "bun run build",
     "build": "bun build ./src/four-opencode-supertools.ts --outdir dist --target bun --format esm",
