@@ -5,13 +5,14 @@ import { existsSync, readFileSync } from 'node:fs';
 import { readFile as readFilePromise } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { tool } from '@opencode-ai/plugin';
-import type { Node } from 'web-tree-sitter';
+import type { Node, Tree } from 'web-tree-sitter';
 import { logDebugEvent } from '../lib/debug-logger';
 import {
   assertPhpIdentifier,
   namedChildren,
   nodeText,
   parsePhpStrict,
+  validatePhp,
   walkNodes,
 } from '../lib/php-parser';
 
@@ -116,7 +117,14 @@ function namespaceFromComposer(sourcePath: string, targetPath: string): string {
       .replace(/\\/g, '/')
       .replace(/^\.\//, '')
       .replace(/\/+$/, '');
-    const prefix = mapping.prefix.endsWith('\\') ? mapping.prefix : `${mapping.prefix}\\`;
+    // An empty PSR-4 prefix maps to the global namespace — do not invent a
+    // leading backslash, which would produce an invalid namespace.
+    const prefix =
+      mapping.prefix === ''
+        ? ''
+        : mapping.prefix.endsWith('\\')
+          ? mapping.prefix
+          : `${mapping.prefix}\\`;
     if (directory === '') {
       const remainder = relDir.replace(/\//g, '\\');
       const ns = `${prefix}${remainder}`.replace(/\\+$/, '');
@@ -149,6 +157,8 @@ function namespaceFromComposer(sourcePath: string, targetPath: string): string {
 }
 
 function validateNamespace(ns: string): void {
+  // '' is the explicit sentinel for the global namespace, not an error.
+  if (ns === '') return;
   if (ns.startsWith('\\')) {
     throw new Error('Namespace must not start with a backslash');
   }
@@ -200,6 +210,11 @@ function findClassNode(root: Node, source: string, className: string): Node | nu
   const found: Node[] = [];
   walkNodes(root, (node) => {
     if (found.length > 0 || !CLASS_LIKE.has(node.type)) return;
+    // Only top-level declarations are movable. A class inside a function or a
+    // conditional is not a namespace-level declaration; lifting it would
+    // change when and whether it is defined.
+    const parent = node.parent;
+    if (!parent || (parent.type !== 'program' && parent.type !== 'namespace_definition')) return;
     const nameNode = node.childForFieldName('name');
     if (nameNode && nodeText(source, nameNode) === className) found.push(node);
   });
@@ -232,7 +247,9 @@ function referencedUseStatements(
     if (aliases.length === 0) continue;
     const referenced = aliases.some((alias) => {
       const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      return new RegExp(`\\b${escaped}\\b`).test(classText);
+      // PHP class names are case-insensitive: `SomeHelper` and `somehelper`
+      // refer to the same import.
+      return new RegExp(`\\b${escaped}\\b`, 'i').test(classText);
     });
     if (referenced) statements.push(nodeText(source, declaration));
   }
@@ -300,6 +317,7 @@ function unresolvedShortNames(
 
 export async function moveClass(input: MoveClassInput): Promise<MoveClassOutput> {
   const warnings: string[] = [];
+  let tree: Tree | undefined;
   try {
     assertPhpIdentifier(input.className, 'Class name');
 
@@ -310,7 +328,7 @@ export async function moveClass(input: MoveClassInput): Promise<MoveClassOutput>
     }
 
     const source = await readFilePromise(absoluteSource, 'utf-8');
-    const tree = await parsePhpStrict(source, absoluteSource);
+    tree = await parsePhpStrict(source, absoluteSource);
 
     let targetNamespace: string;
     if (input.namespace !== undefined) {
@@ -379,7 +397,7 @@ export async function moveClass(input: MoveClassInput): Promise<MoveClassOutput>
     if (imports.length > 0) targetContent += '\n';
     targetContent += `${classText}\n`;
 
-    await parsePhpStrict(targetContent, 'Generated target file');
+    await validatePhp(targetContent, 'Generated target file');
 
     let sourceContent = source.slice(0, extracted.startIndex) + source.slice(classNode.endIndex);
     sourceContent = sourceContent
@@ -388,11 +406,13 @@ export async function moveClass(input: MoveClassInput): Promise<MoveClassOutput>
       .trimEnd();
     sourceContent += '\n';
 
-    await parsePhpStrict(sourceContent, 'Modified source file');
+    await validatePhp(sourceContent, 'Modified source file');
 
     return { success: true, sourceContent, targetContent, warnings };
   } catch (err) {
     return { success: false, error: String(err instanceof Error ? err.message : err) };
+  } finally {
+    tree?.delete();
   }
 }
 

@@ -82,18 +82,36 @@ function findFirstErrorNode(node: Node): Node | null {
   return null;
 }
 
+function assertNoSyntaxError(tree: Tree, label: string): void {
+  if (!tree.rootNode.hasError) return;
+  const errorNode = findFirstErrorNode(tree.rootNode);
+  const line = errorNode ? errorNode.startPosition.row + 1 : 0;
+  throw new Error(`${label} contains a PHP syntax error${line > 0 ? ` at line ${line}` : ''}`);
+}
+
 /**
  * Parse and reject syntactically invalid input. Callers must never emit an
  * edit for source that does not parse: a wrong tree produces wrong edits.
+ * The caller owns the returned tree and must call `tree.delete()` when done.
  */
 export async function parsePhpStrict(source: string, label = 'PHP source'): Promise<Tree> {
   const tree = await parsePhp(source);
-  if (tree.rootNode.hasError) {
-    const errorNode = findFirstErrorNode(tree.rootNode);
-    const line = errorNode ? errorNode.startPosition.row + 1 : 0;
-    throw new Error(`${label} contains a PHP syntax error${line > 0 ? ` at line ${line}` : ''}`);
-  }
+  assertNoSyntaxError(tree, label);
   return tree;
+}
+
+/**
+ * Validate source without retaining the native tree. Use this for generated
+ * output that is only checked, never inspected: `parsePhpStrict` would leak the
+ * WASM `Tree` because the caller has nothing to delete.
+ */
+export async function validatePhp(source: string, label = 'PHP source'): Promise<void> {
+  const tree = await parsePhp(source);
+  try {
+    assertNoSyntaxError(tree, label);
+  } finally {
+    tree.delete();
+  }
 }
 
 export function nodeText(source: string, node: Node): string {
@@ -130,7 +148,10 @@ export function childByType(node: Node, type: string): Node | null {
   return null;
 }
 
-/** Byte offset of the first character of each 0-based row. */
+/**
+ * String index (UTF-16 code units) of the first character of each 0-based row.
+ * web-tree-sitter reports node indices in the same units, so they line up.
+ */
 export function lineStartOffsets(source: string): number[] {
   const offsets = [0];
   for (let i = 0; i < source.length; i++) {

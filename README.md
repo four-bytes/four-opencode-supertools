@@ -57,6 +57,9 @@ stack in [AGENTS.md](AGENTS.md).
 | **`rename_symbol`**  | Rename a declaration + provably same-scope references in one file (structural, not semantic) |
 | **`move_class`**     | Move a class-like declaration, preserving declare blocks and referenced `use` imports         |
 
+> These three tools are **pure**: they return the generated content and never
+> write to disk. The caller decides whether to apply it.
+>
 > Git, GitHub and GitLab tools live in the separate `four-opencode-git` plugin.
 
 ### `batch_edit`
@@ -142,8 +145,10 @@ passes them back. Static methods use `self::` and a `static` signature.
 
 **Rejected loudly (no silent wrong edit):** partial statements, selections spanning
 block boundaries, `return`/`yield`/`goto`, `break`/`continue` that jump out of the
-selection, `$this` inside a static method, values assigned in the selection and read
-afterwards, and method-name collisions.
+selection (including depth-qualified `break 2`/`continue 2`), `$this` inside a static
+method, values assigned in the selection and read afterwards, context-dependent magic
+constants (`__METHOD__`, `__FUNCTION__`, `__LINE__`), and method-name collisions.
+Collisions are compared case-insensitively, matching PHP method-name rules.
 
 **Parameters:**
 
@@ -160,10 +165,16 @@ semantic cross-file reference resolution: imports and references in other files 
 not updated and a warning says so.
 
 - Same-class `$this->`, `self::` and `static::` usages are renamed by default.
-- Same-name members on other objects/classes are counted and reported as warnings.
+- Class/interface/trait/function renames honour `renameUsages: false` too: only the
+  declaration changes, and a warning reports the skipped usages.
+- "Provably same-scope" is structural, not semantic: a nested anonymous class is its
+  own scope, and same-name members on other objects/classes are counted and reported
+  as warnings.
 - Duplicate declarations of the same name are ambiguous: pass `line` to select one.
 - Variable renames require `line` — variables are scope-bound and file-wide matching
   would rename unrelated functions.
+- Free-function renames only update call sites in this file; calls in other files are
+  not resolved.
 
 **Parameters:**
 
@@ -188,6 +199,10 @@ Move a class, interface, trait or enum to another file using tree-sitter.
 - The target namespace comes from an explicit `namespace` argument or the nearest
   `composer.json` PSR-4 mapping (`autoload` / `autoload-dev`). If neither yields a
   unique namespace, the operation fails instead of guessing.
+- Only top-level class-like declarations are movable; a class declared inside a
+  function or conditional is not found and the operation fails.
+- An empty PSR-4 prefix maps to the global namespace and does not produce a leading
+  backslash. An explicit `namespace: ''` means "global namespace".
 - Unresolved short class names that are neither imported nor built in are reported
   as warnings (after a namespace move they would resolve against the new namespace).
 - A non-empty target file is never overwritten.

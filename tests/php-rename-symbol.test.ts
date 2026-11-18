@@ -167,4 +167,64 @@ describe('rename_symbol', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('syntax error');
   });
+
+  it('leaves class references untouched when renameUsages is false', async () => {
+    const result = await renameSymbol({
+      filePath: fixture('class-usage.php'),
+      oldName: 'Widget',
+      newName: 'Gadget',
+      symbolKind: 'class',
+      renameUsages: false,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.replacementCount).toBe(1);
+    const output = result.modifiedContent ?? '';
+    await parsePhpStrict(output, 'rename output');
+    expect(output).toContain('class Gadget');
+    expect(output).toContain('new Widget()');
+    expect(output).toContain('Widget::KIND');
+    expect(result.warnings?.join(' ')).toContain('renameUsages=false');
+  });
+
+  it('keeps an anonymous-class rename inside its own boundary', async () => {
+    const result = await renameSymbol({
+      filePath: fixture('anonymous-class.php'),
+      oldName: 'target',
+      newName: 'renamed',
+      symbolKind: 'method',
+      line: 13,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.replacementCount).toBe(2);
+    const output = result.modifiedContent ?? '';
+    await parsePhpStrict(output, 'rename output');
+
+    const outerPart = output.slice(0, output.indexOf('return new class'));
+    expect(outerPart).toContain('public function target(): void');
+    expect(outerPart).toContain('$this->target();');
+    expect(outerPart).not.toContain('renamed');
+
+    const anonPart = output.slice(output.indexOf('return new class'));
+    expect(anonPart).toContain('public function renamed(): void');
+    expect(anonPart).toContain('$this->renamed();');
+  });
+
+  it('renames variables correctly in non-ASCII source', async () => {
+    const result = await renameSymbol({
+      filePath: fixture('utf8.php'),
+      oldName: '$name',
+      newName: 'who',
+      symbolKind: 'variable',
+      line: 8,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.replacementCount).toBe(2);
+    const output = result.modifiedContent ?? '';
+    await parsePhpStrict(output, 'rename output');
+    expect(output).toContain("$who = 'Welt';");
+    expect(output).toContain('echo "Hallo $who";');
+  });
 });

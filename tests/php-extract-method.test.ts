@@ -161,4 +161,59 @@ describe('extract_method', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('valid PHP identifier');
   });
+
+  it('keeps edits correct in non-ASCII source (umlauts, emoji before the selection)', async () => {
+    const result = await extractMethod({
+      filePath: fixture('utf8.php'),
+      startLine: 9,
+      endLine: 9,
+      newMethodName: 'greet',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.parameters).toEqual(['name']);
+    const output = result.modifiedContent ?? '';
+    await parsePhpStrict(output, 'extract output');
+    expect(output).toContain('// äöüß 😀 marker');
+    expect(output).toContain('$this->greet($name);');
+    expect(output).toContain('private function greet(&$name): void');
+    expect(output).toContain('echo "Hallo $name";');
+  });
+
+  it('rejects depth-qualified break that jumps out of the selection', async () => {
+    const result = await extractMethod({
+      filePath: fixture('nested-loop.php'),
+      startLine: 10,
+      endLine: 10,
+      newMethodName: 'skipRow',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('break');
+    expect(result.error).toContain('jump out');
+  });
+
+  it('treats method-name collisions case-insensitively', async () => {
+    const result = await extractMethod({
+      filePath: fixture('case-collision.php'),
+      startLine: 8,
+      endLine: 8,
+      newMethodName: 'foo',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('already exists');
+  });
+
+  it('rejects fractional line numbers', async () => {
+    const result = await extractMethod({
+      filePath: fixture('order-controller.php'),
+      startLine: 10.5,
+      endLine: 11,
+      newMethodName: 'persist',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Invalid line range');
+  });
 });

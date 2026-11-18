@@ -13,6 +13,7 @@ import {
   nearestAncestor,
   nodeText,
   parsePhpStrict,
+  validatePhp,
   variableName,
   walkNodes,
 } from '../lib/php-parser';
@@ -55,11 +56,16 @@ export interface RenameSymbolOutput {
   error?: string;
 }
 
-const CLASS_LIKE = new Set([
+/**
+ * Nodes that own a member scope. Anonymous classes must be a boundary too:
+ * falling back to the root node would let a rename touch an unrelated class.
+ */
+const CONTAINER_LIKE = new Set([
   'class_declaration',
   'interface_declaration',
   'trait_declaration',
   'enum_declaration',
+  'anonymous_class',
 ]);
 
 const FUNCTION_LIKE = new Set([
@@ -135,7 +141,7 @@ function collectDeclarations(root: Node, source: string, name: string): Declarat
       nameNode,
       kind,
       startIndex: nameNode.startIndex + (isVariableName ? 1 : 0),
-      container: nearestAncestor(node, CLASS_LIKE),
+      container: nearestAncestor(node, CONTAINER_LIKE),
     });
   });
   return declarations;
@@ -408,6 +414,7 @@ function countSkippedMemberUsages(
 
 export async function renameSymbol(input: RenameSymbolInput): Promise<RenameSymbolOutput> {
   const warnings: string[] = [];
+  let tree: Tree | undefined;
   try {
     if (input.newName === input.oldName) {
       return { success: false, replacementCount: 0, error: 'New name equals the existing name' };
@@ -434,7 +441,7 @@ export async function renameSymbol(input: RenameSymbolInput): Promise<RenameSymb
     }
 
     const source = await readFilePromise(input.filePath, 'utf-8');
-    const tree = await parsePhpStrict(source, input.filePath);
+    tree = await parsePhpStrict(source, input.filePath);
     const oldName = input.oldName.replace(/^\$/, '');
     const renameUsages = input.renameUsages ?? true;
 
@@ -541,17 +548,11 @@ export async function renameSymbol(input: RenameSymbolInput): Promise<RenameSymb
         if (renameUsages) {
           targets.push(...collectFunctionUsages(declaration, tree, source, oldName));
         }
-      } else {
+      } else if (renameUsages) {
         targets.push(...collectClassUsages(tree, source, oldName));
       }
 
-      if (
-        !renameUsages &&
-        (declaration.kind === 'method' ||
-          declaration.kind === 'property' ||
-          declaration.kind === 'constant' ||
-          declaration.kind === 'function')
-      ) {
+      if (!renameUsages) {
         warnings.push(
           `renameUsages=false: same-scope usages of '${oldName}' were left unchanged on purpose.`
         );
@@ -573,6 +574,8 @@ export async function renameSymbol(input: RenameSymbolInput): Promise<RenameSymb
         warnings.push(
           'Only this file is updated; imports and references in other files are not resolved.'
         );
+      } else if (declaration.kind === 'function') {
+        warnings.push('Only this file is updated; call sites in other files are not resolved.');
       }
     }
 
@@ -618,7 +621,7 @@ export async function renameSymbol(input: RenameSymbolInput): Promise<RenameSymb
         modified.slice(0, target.startIndex) + input.newName + modified.slice(target.endIndex);
     }
 
-    await parsePhpStrict(modified, 'Generated file');
+    await validatePhp(modified, 'Generated file');
 
     return {
       success: true,
@@ -632,6 +635,8 @@ export async function renameSymbol(input: RenameSymbolInput): Promise<RenameSymb
       replacementCount: 0,
       error: String(err instanceof Error ? err.message : err),
     };
+  } finally {
+    tree?.delete();
   }
 }
 

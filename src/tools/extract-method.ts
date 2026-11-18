@@ -3,7 +3,7 @@
 
 import { readFile as readFilePromise } from 'node:fs/promises';
 import { tool } from '@opencode-ai/plugin';
-import type { Node } from 'web-tree-sitter';
+import type { Node, Tree } from 'web-tree-sitter';
 import { logDebugEvent } from '../lib/debug-logger';
 import {
   PHP_SUPERGLOBALS,
@@ -12,8 +12,10 @@ import {
   lineStartOffsets,
   namedChildren,
   nearestAncestor,
+  nodeText,
   parsePhpStrict,
   sourceLines,
+  validatePhp,
   variableName,
   walkNodes,
 } from '../lib/php-parser';
@@ -70,6 +72,9 @@ function hasStaticModifier(node: Node): boolean {
   }
   return false;
 }
+
+/** Magic constants whose value changes when the statement moves to a new method. */
+const CONTEXT_MAGIC_CONSTANTS = new Set(['__METHOD__', '__FUNCTION__', '__LINE__']);
 
 const FUNCTION_LIKE = new Set([
   'method_declaration',
@@ -182,12 +187,43 @@ function findUnsupported(statement: Node): Node | null {
   return offending;
 }
 
-function escapingJump(statement: Node, selectionStart: number, selectionEnd: number): Node | null {
+/** Numeric level of `break N` / `continue N` (defaults to 1). */
+function jumpDepth(node: Node, source: string): number {
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (child?.type === 'integer') return Number(nodeText(source, child));
+  }
+  return 1;
+}
+
+/**
+ * The loop/switch a `break`/`continue` actually targets, honouring a numeric
+ * level (`break 2`). Returns null when the level is invalid or there are fewer
+ * enclosing constructs than requested.
+ */
+function jumpTarget(node: Node, depth: number): Node | null {
+  if (!Number.isInteger(depth) || depth < 1) return null;
+  let current: Node | null = node;
+  for (let remaining = depth; remaining > 0; remaining--) {
+    current = nearestAncestor(current, LOOP_OR_SWITCH);
+    if (!current) return null;
+  }
+  return current;
+}
+
+function escapingJump(
+  statement: Node,
+  selectionStart: number,
+  selectionEnd: number,
+  source: string
+): Node | null {
   let escaping: Node | null = null;
   walkNodes(statement, (node) => {
     if (escaping) return;
     if (node.type !== 'break_statement' && node.type !== 'continue_statement') return;
-    const target = nearestAncestor(node, LOOP_OR_SWITCH);
+    // A depth-qualified jump can target a construct outside the selection;
+    // resolve the real target instead of comparing only the innermost loop.
+    const target = jumpTarget(node, jumpDepth(node, source));
     if (!target || target.startIndex < selectionStart || target.endIndex > selectionEnd) {
       escaping = node;
     }
@@ -196,6 +232,7 @@ function escapingJump(statement: Node, selectionStart: number, selectionEnd: num
 }
 
 export async function extractMethod(input: ExtractMethodInput): Promise<ExtractMethodOutput> {
+  let tree: Tree | undefined;
   try {
     assertPhpIdentifier(input.newMethodName, 'Method name');
     const visibility = input.visibility ?? 'private';
@@ -206,6 +243,8 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
     const endRow = input.endLine - 1;
 
     if (
+      !Number.isInteger(input.startLine) ||
+      !Number.isInteger(input.endLine) ||
       input.startLine < 1 ||
       input.endLine < 1 ||
       input.endLine > lines.length ||
@@ -217,7 +256,7 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
       };
     }
 
-    const tree = await parsePhpStrict(source, input.filePath);
+    tree = await parsePhpStrict(source, input.filePath);
     const method = findEnclosingMethod(tree.rootNode, startRow, endRow);
     if (!method) {
       return { success: false, error: 'Selection is not inside a PHP method' };
@@ -276,6 +315,7 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
     const selectionEnd = statements[statements.length - 1].endIndex;
 
     // Reject constructs whose semantics would change or that cannot be inferred.
+    const magicConstants = new Set<string>();
     for (const statement of statements) {
       const offending = findUnsupported(statement);
       if (offending) {
@@ -284,7 +324,12 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
           error: `Cannot extract: selection contains an unsupported '${offending.type}' statement at line ${offending.startPosition.row + 1}`,
         };
       }
-      const jump = escapingJump(statement, selectionStart, selectionEnd);
+      walkNodes(statement, (node) => {
+        if (node.type === 'name' && CONTEXT_MAGIC_CONSTANTS.has(nodeText(source, node))) {
+          magicConstants.add(nodeText(source, node));
+        }
+      });
+      const jump = escapingJump(statement, selectionStart, selectionEnd, source);
       if (jump) {
         return {
           success: false,
@@ -292,8 +337,17 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
         };
       }
     }
+    if (magicConstants.size > 0) {
+      return {
+        success: false,
+        error: `Cannot extract: ${[...magicConstants].join(
+          ', '
+        )} resolves against the enclosing function and would change inside the new method`,
+      };
+    }
 
     // Existing member of the same class? A duplicate method is a fatal error.
+    // PHP method names are case-insensitive, so compare normalized names.
     const classNode = nearestAncestor(method, CLASS_LIKE);
     const methodNames = new Set<string>();
     if (classNode) {
@@ -302,11 +356,11 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
         for (const member of namedChildren(classBody)) {
           if (member.type !== 'method_declaration') continue;
           const nameNode = member.childForFieldName('name');
-          if (nameNode) methodNames.add(source.slice(nameNode.startIndex, nameNode.endIndex));
+          if (nameNode) methodNames.add(nodeText(source, nameNode).toLowerCase());
         }
       }
     }
-    if (methodNames.has(input.newMethodName)) {
+    if (methodNames.has(input.newMethodName.toLowerCase())) {
       return {
         success: false,
         error: `Cannot extract: method '${input.newMethodName}' already exists in the enclosing class`,
@@ -320,15 +374,22 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
       (innermostFunction !== null &&
         innermostFunction !== method &&
         hasStaticModifier(innermostFunction));
-    if (isStatic && /\$this\b/.test(source.slice(selectionStart, selectionEnd))) {
+
+    const selectedVariables = statements
+      .flatMap((statement) => variablesIn(statement))
+      .sort((a, b) => a.startIndex - b.startIndex);
+    // AST-based check: `$this` in a plain string or comment is not a use.
+    const usesThis = selectedVariables.some(
+      (variable) => variableName(variable, source) === 'this'
+    );
+    if (isStatic && usesThis) {
+      const methodNameNode = method.childForFieldName('name');
       return {
         success: false,
-        error: `Cannot extract: selection uses $this inside static method '${source
-          .slice(
-            method.childForFieldName('name')?.startIndex ?? method.startIndex,
-            method.childForFieldName('name')?.endIndex ?? method.endIndex
-          )
-          .trim()}'`,
+        error: `Cannot extract: selection uses $this inside static method '${(methodNameNode
+          ? nodeText(source, methodNameNode)
+          : ''
+        ).trim()}'`,
       };
     }
 
@@ -344,10 +405,6 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
       if (node.type !== 'variable_name' || node.startIndex >= selectionStart) return;
       definedBefore.add(variableName(node, source));
     });
-
-    const selectedVariables = statements
-      .flatMap((statement) => variablesIn(statement))
-      .sort((a, b) => a.startIndex - b.startIndex);
 
     const parameters: string[] = [];
     const assignedInSelection = new Set<string>();
@@ -452,11 +509,13 @@ export async function extractMethod(input: ExtractMethodInput): Promise<ExtractM
     const modified =
       withCall.slice(0, adjustedInsertOffset) + methodBlock + withCall.slice(adjustedInsertOffset);
 
-    await parsePhpStrict(modified, 'Generated file');
+    await validatePhp(modified, 'Generated file');
 
     return { success: true, modifiedContent: modified, parameters };
   } catch (err) {
     return { success: false, error: String(err instanceof Error ? err.message : err) };
+  } finally {
+    tree?.delete();
   }
 }
 

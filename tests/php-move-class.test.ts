@@ -156,4 +156,44 @@ describe('move_class', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('syntax error');
   });
+
+  it('refuses to move a class declared inside a function', async () => {
+    const result = await moveClass({
+      sourcePath: fixture('move', 'nested-class.php'),
+      className: 'InsideFunction',
+      targetPath: fixture('move', 'InsideFunction.php'),
+      namespace: 'App\\Moved',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
+  });
+
+  it('derives a namespace from an empty PSR-4 prefix without a leading backslash', async () => {
+    const result = await moveClass({
+      sourcePath: fixture('composer-global', 'src', 'FlatService.php'),
+      className: 'FlatService',
+      targetPath: fixture('composer-global', 'src', 'Domain', 'FlatService.php'),
+    });
+
+    expect(result.success).toBe(true);
+    const target = result.targetContent ?? '';
+    await parsePhpStrict(target, 'move target');
+    expect(target).toContain('namespace Domain;');
+    expect(target).not.toContain('namespace \\');
+  });
+
+  it('accepts the empty namespace as the global-namespace sentinel', async () => {
+    const result = await moveClass({
+      sourcePath: fixture('move', 'service.php'),
+      className: 'MovedService',
+      targetPath: fixture('move', 'GlobalService.php'),
+      namespace: '',
+    });
+
+    expect(result.success).toBe(true);
+    const target = result.targetContent ?? '';
+    await parsePhpStrict(target, 'move target');
+    expect(target).not.toContain('namespace ');
+  });
 });
