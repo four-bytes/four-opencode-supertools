@@ -16,6 +16,9 @@ import { sonarSearchTool } from './tools/sonar-search';
 import { lspReferencesTool } from './tools/lsp-references';
 import { lspHoverTool } from './tools/lsp-hover';
 import { fileOutlineTool } from './tools/file-outline';
+import { extractMethodTool } from './tools/extract-method';
+import { renameSymbolTool } from './tools/rename-symbol';
+import { moveClassTool } from './tools/move-class';
 
 const FourOpencodeSupertools: Plugin = async (_ctx) => {
   return {
@@ -33,6 +36,9 @@ const FourOpencodeSupertools: Plugin = async (_ctx) => {
       lsp_references: lspReferencesTool,
       lsp_hover: lspHoverTool,
       file_outline: fileOutlineTool,
+      extract_method: extractMethodTool,
+      rename_symbol: renameSymbolTool,
+      move_class: moveClassTool,
     },
   };
 };

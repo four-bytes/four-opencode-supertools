@@ -73,24 +73,33 @@ const SLOW_SERVER = `
 const { stdin, stdout } = process;
 let buffer = '';
 stdin.setEncoding('utf-8');
+function send(msg) {
+  const json = JSON.stringify(msg);
+  stdout.write('Content-Length: ' + Buffer.byteLength(json) + '\\r\\n\\r\\n' + json);
+}
+function handle(msg) {
+  if (msg.method === 'initialize') {
+    send({ jsonrpc: '2.0', id: msg.id, result: { capabilities: { hoverProvider: true } } });
+  } else if (msg.method === 'shutdown') {
+    // Answer shutdown so teardown does not wait for the full client timeout;
+    // only hover stays unanswered.
+    send({ jsonrpc: '2.0', id: msg.id, result: null });
+  } else if (msg.method === 'exit') {
+    process.exit(0);
+  }
+  // Never respond to hover — triggers timeout
+}
 stdin.on('data', (chunk) => {
   buffer += chunk;
-  const match = buffer.match(/^Content-Length: (\\d+)\\r\\n\\r\\n/);
-  if (match && match.index !== undefined) {
-    const headerEnd = match.index + match[0].length;
+  while (true) {
+    const match = buffer.match(/^Content-Length: (\\d+)\\r\\n\\r\\n/);
+    if (!match) return;
+    const headerEnd = match[0].length;
     const len = parseInt(match[1], 10);
-    if (buffer.length >= headerEnd + len) {
-      const content = buffer.slice(headerEnd, headerEnd + len);
-      buffer = buffer.slice(headerEnd + len);
-      try {
-        const msg = JSON.parse(content);
-        if (msg.method === 'initialize') {
-          const resp = JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: { capabilities: { hoverProvider: true } } });
-          stdout.write('Content-Length: ' + Buffer.byteLength(resp) + '\\r\\n\\r\\n' + resp);
-        }
-        // Never respond to hover — triggers timeout
-      } catch (_err) { /* test cleanup */ }
-    }
+    if (buffer.length < headerEnd + len) return;
+    const content = buffer.slice(headerEnd, headerEnd + len);
+    buffer = buffer.slice(headerEnd + len);
+    try { handle(JSON.parse(content)); } catch (_err) { /* test cleanup */ }
   }
 });
 `;
@@ -115,9 +124,10 @@ async function registerMockServer(): Promise<void> {
 // ────────────────────────────────────────────────────────────────
 
 function parseResult(result: unknown): Record<string, unknown> {
-  const output = typeof result === 'object' && result !== null && 'output' in result
-    ? (result as { output: string }).output
-    : String(result);
+  const output =
+    typeof result === 'object' && result !== null && 'output' in result
+      ? (result as { output: string }).output
+      : String(result);
   return JSON.parse(output) as Record<string, unknown>;
 }
 
@@ -154,7 +164,9 @@ describe('lsp_hover tool', () => {
   afterEach(async () => {
     try {
       rmSync(testDir, { recursive: true });
-    } catch (_err) { /* test cleanup */ }
+    } catch {
+      /* test cleanup */
+    }
     // Shutdown mock LSP clients
     const { getLspRegistry } = await import('../src/lib/lsp-registry');
     await getLspRegistry().shutdownAll();
@@ -163,10 +175,9 @@ describe('lsp_hover tool', () => {
 
   it('returns available=true with type info from mock LSP server', async () => {
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspHoverTool.execute(
-      { file_path: testFile, line: 4, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspHoverTool.execute({ file_path: testFile, line: 4, character: 1 }, ctx)
+    );
 
     expect(result.available).toBe(true);
     expect(result.file).toBe(testFile);
@@ -180,10 +191,9 @@ describe('lsp_hover tool', () => {
     writeFileSync(noServerFile, 'some content', 'utf-8');
 
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspHoverTool.execute(
-      { file_path: noServerFile, line: 1, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspHoverTool.execute({ file_path: noServerFile, line: 1, character: 1 }, ctx)
+    );
 
     expect(result.available).toBe(false);
     expect(result.hint).toBeDefined();
@@ -192,10 +202,12 @@ describe('lsp_hover tool', () => {
 
   it('returns error when file not found', async () => {
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspHoverTool.execute(
-      { file_path: join(testDir, 'does-not-exist.ts'), line: 1, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspHoverTool.execute(
+        { file_path: join(testDir, 'does-not-exist.ts'), line: 1, character: 1 },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(false);
     expect(result.hint).toContain('Could not read file');
@@ -204,10 +216,9 @@ describe('lsp_hover tool', () => {
   it('returns no-information when hover is empty at position', async () => {
     const ctx = mockCtx(testDir);
     // Line 3 (0-indexed: 2) returns empty contents from mock server
-    const result = parseResult(await lspHoverTool.execute(
-      { file_path: testFile, line: 3, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspHoverTool.execute({ file_path: testFile, line: 3, character: 1 }, ctx)
+    );
 
     expect(result.available).toBe(true);
     expect(result.type).toBe('no information at this position');
@@ -216,25 +227,23 @@ describe('lsp_hover tool', () => {
   it('truncates long documentation', async () => {
     const ctx = mockCtx(testDir);
     // Line 1 (0-indexed: 0) returns very long documentation
-    const result = parseResult(await lspHoverTool.execute(
-      { file_path: testFile, line: 1, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspHoverTool.execute({ file_path: testFile, line: 1, character: 1 }, ctx)
+    );
 
     expect(result.available).toBe(true);
     expect(result.fullContents).toBeDefined();
     expect((result.fullContents as string).length).toBeLessThanOrEqual(4012); // 4000 + len('…[truncated]') = 4012
-    expect((result.fullContents as string)).toContain('…[truncated]');
+    expect(result.fullContents as string).toContain('…[truncated]');
   });
 
   it('converts 1-based line/character to 0-based for LSP', async () => {
     const ctx = mockCtx(testDir);
     // Pass 1-based: line=4, char=5 → LSP gets line=3, char=4
     // Mock returns different content per line, so we verify it doesn't crash
-    const result = parseResult(await lspHoverTool.execute(
-      { file_path: testFile, line: 4, character: 5 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspHoverTool.execute({ file_path: testFile, line: 4, character: 5 }, ctx)
+    );
 
     expect(result.available).toBe(true);
     // The position returned is the original 1-based
@@ -243,10 +252,7 @@ describe('lsp_hover tool', () => {
 
   it('defaults character to 1 when not provided', async () => {
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspHoverTool.execute(
-      { file_path: testFile, line: 4 },
-      ctx
-    ));
+    const result = parseResult(await lspHoverTool.execute({ file_path: testFile, line: 4 }, ctx));
 
     expect(result.available).toBe(true);
     expect(result.position).toEqual({ line: 4, character: 1 });
@@ -267,10 +273,9 @@ describe('lsp_hover tool', () => {
 
     const ctx = mockCtx(testDir);
     // Use a short timeout — the mock server never responds
-    const result = parseResult(await lspHoverTool.execute(
-      { file_path: slowFile, line: 1, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspHoverTool.execute({ file_path: slowFile, line: 1, character: 1 }, ctx)
+    );
 
     // Should return null hover → no information
     expect(result.available).toBe(true);
