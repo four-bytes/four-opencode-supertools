@@ -283,7 +283,7 @@ export class LspClient {
     this.shutdownRequested = true;
 
     try {
-      await this.request<null>('shutdown', null, 2000);
+      await this.request<null>('shutdown', null, 5000);
     } catch {
       // Shutdown may fail, continue with exit
     }
