@@ -2,6 +2,7 @@
 
 namespace App\Docs;
 
+use App\Attribute\SomeAttribute;
 use App\Helper\SomeHelper;
 
 /**

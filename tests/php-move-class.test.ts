@@ -46,9 +46,11 @@ describe('move_class', () => {
     await parsePhpStrict(source, 'move source');
     expect(target).toContain('/**\n * Documented service.\n */');
     expect(target).toContain('#[SomeAttribute]');
+    expect(target).toContain('use App\\Attribute\\SomeAttribute;');
     expect(target).toContain('use App\\Helper\\SomeHelper;');
     expect(source).not.toContain('Documented service.');
-    expect(source).not.toContain('SomeAttribute');
+    expect(source).not.toContain('#[SomeAttribute]');
+    expect(source).not.toContain('class DocumentedService');
   });
 
   it('does not inject strict_types when the source has no declare block (#78)', async () => {
