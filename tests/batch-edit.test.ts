@@ -44,7 +44,7 @@ describe('batch_edit tool', () => {
         search: 'foo',
         replace: 'baz',
         glob: '*.ts',
-        path: '.',
+        directory: testDir,
       },
       ctx
     );

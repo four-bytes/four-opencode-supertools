@@ -111,6 +111,12 @@ Returns structured output: error count, warning count, and formatted error list.
 
   args: {
     file_path: tool.schema.string().describe('Absolute path to the file to lint'),
+    directory: tool.schema
+      .string()
+      .optional()
+      .describe(
+        'Working directory for the linter (defaults to the project directory). Use to lint a foreign repo.'
+      ),
     linter: tool.schema
       .string()
       .optional()
@@ -121,7 +127,7 @@ Returns structured output: error count, warning count, and formatted error list.
 
   async execute(args, ctx) {
     const { file_path, linter: linterArg } = args;
-    const directory = ctx.directory;
+    const directory = (args.directory as string | undefined) ?? ctx.directory;
 
     logDebugEvent('lint_file.start', { file_path, linter: linterArg });
 

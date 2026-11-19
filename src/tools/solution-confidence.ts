@@ -62,10 +62,16 @@ export const solutionConfidenceTool = tool({
       .string()
       .optional()
       .describe('Optional JSON array of evidence strings (e.g., test file paths, KB entry keys)'),
+    directory: tool.schema
+      .string()
+      .optional()
+      .describe(
+        'Working directory (defaults to the project directory). Use to score a foreign repo.'
+      ),
   },
 
   async execute(args, ctx) {
-    const directory = ctx.directory;
+    const directory = (args.directory as string | undefined) ?? ctx.directory;
     logDebugEvent('solution_confidence.start', { description: args.description.substring(0, 60) });
 
     const errors: string[] = [];

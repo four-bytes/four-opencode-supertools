@@ -45,6 +45,10 @@ export const lspReferencesTool = tool({
       .optional()
       .default(DEFAULT_MAX_RESULTS)
       .describe('Maximum number of references to return (default: 50)'),
+    directory: tool.schema
+      .string()
+      .optional()
+      .describe('Base directory for rendering relative paths (defaults to the project directory).'),
   },
 
   async execute(args, ctx) {
@@ -122,7 +126,7 @@ export const lspReferencesTool = tool({
     // Get all references
     const rawReferences = await client.references(uri, lspLine, lspChar);
 
-    const baseDir = ctx.directory ?? process.cwd();
+    const baseDir = (args.directory as string | undefined) ?? ctx.directory ?? process.cwd();
     const truncated = rawReferences.length > validatedMax;
     const limited = rawReferences.slice(0, validatedMax);
 
