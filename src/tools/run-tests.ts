@@ -220,6 +220,12 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
 
   args: {
     test_file: tool.schema.string().describe('Absolute path to the test file to run'),
+    directory: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Working directory for the test runner (defaults to the project directory). Use to run a foreign repo's test suite."
+      ),
     filter: tool.schema
       .string()
       .optional()
@@ -234,7 +240,7 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
 
   async execute(args, ctx) {
     const { test_file, filter, framework: frameworkArg } = args;
-    const directory = ctx.directory;
+    const directory = (args.directory as string | undefined) ?? ctx.directory;
 
     logDebugEvent('run_tests.start', { test_file, filter, framework: frameworkArg });
 

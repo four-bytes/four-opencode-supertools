@@ -80,6 +80,34 @@ describe('simple', () => {
     expect(result.length).toBeGreaterThan(0);
   });
 
+  it('runs tests via a directory override into a foreign repo', async () => {
+    const foreignDir = join(tmpdir(), `supertools-foreign-${Date.now()}`);
+    mkdirSync(foreignDir, { recursive: true });
+    try {
+      const testFilePath = join(testDir, 'override.test.ts');
+      writeFileSync(
+        testFilePath,
+        `import { describe, it, expect } from 'bun:test';\ndescribe('override', () => { it('passes', () => { expect(1).toBe(1); }); });\n`,
+        'utf-8'
+      );
+
+      // ctx points at a different (foreign) dir; the override should win
+      const result = await runTestsTool.execute(
+        { test_file: testFilePath, framework: 'bun', directory: testDir },
+        mockCtx(foreignDir)
+      );
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
+    } finally {
+      try {
+        rmSync(foreignDir, { recursive: true });
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+
   it('handles test filter parameter', async () => {
     const testFilePath = join(testDir, 'filtered.test.ts');
     writeFileSync(

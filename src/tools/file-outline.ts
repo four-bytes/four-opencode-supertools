@@ -384,11 +384,15 @@ export const fileOutlineTool = tool({
       .optional()
       .default(DEFAULT_MAX_DEPTH)
       .describe('Maximum nesting depth to include (default: 2)'),
+    directory: tool.schema
+      .string()
+      .optional()
+      .describe('Base directory for resolving relative paths (defaults to the project directory).'),
   },
 
   async execute(args, ctx) {
     const maxDepth = normalizeDepth(args.max_depth);
-    const baseDir = ctx.directory;
+    const baseDir = (args.directory as string | undefined) ?? ctx.directory;
 
     logDebugEvent('file_outline.start', {
       path: args.path,

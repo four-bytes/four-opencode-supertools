@@ -3,7 +3,7 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { relative } from 'node:path';
 import { logDebugEvent } from '../lib/debug-logger';
 
 export const batchEditTool = tool({
@@ -25,10 +25,10 @@ Returns a summary of files changed and replacements per file.`,
     glob: tool.schema
       .string()
       .describe('Glob pattern to filter files (e.g., "src/**/*.ts", "**/*.php")'),
-    path: tool.schema
+    directory: tool.schema
       .string()
       .optional()
-      .describe('Base directory for glob search. Defaults to project root.'),
+      .describe('Base directory for the glob search (defaults to the project directory).'),
     dry_run: tool.schema
       .boolean()
       .optional()
@@ -36,8 +36,8 @@ Returns a summary of files changed and replacements per file.`,
   },
 
   async execute(args, ctx) {
-    const { search, replace, glob: globPattern, path: basePath, dry_run } = args;
-    const directory = basePath ? resolve(ctx.directory, basePath) : ctx.directory;
+    const { search, replace, glob: globPattern, directory: baseDir, dry_run } = args;
+    const directory = (baseDir as string | undefined) ?? ctx.directory;
 
     logDebugEvent('batch_edit.start', { search, glob: globPattern, path: directory, dry_run });
 
