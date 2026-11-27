@@ -3,9 +3,17 @@
 
 import type { ModuleDefinition } from '../lib/modules/registry';
 
-// Symfony tools land in a later epic issue (#90).
 export const symfonyModule: ModuleDefinition = {
   id: 'symfony',
   requires: ['php'],
-  tools: async () => ({}),
+  tools: async () => {
+    const [{ symfonyServiceTool }, { symfonyEventsTool }] = await Promise.all([
+      import('../tools/symfony-service'),
+      import('../tools/symfony-events'),
+    ]);
+    return {
+      symfony_service: symfonyServiceTool,
+      symfony_events: symfonyEventsTool,
+    };
+  },
 };

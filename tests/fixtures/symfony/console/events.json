@@ -1,0 +1,26 @@
+{
+  "kernel.request": [
+    {
+      "service": "App\\Listener\\Later",
+      "class": "App\\Listener\\Later",
+      "method": "onRequest",
+      "priority": 0
+    },
+    {
+      "service": "App\\Listener\\Earlier",
+      "class": "App\\Listener\\Earlier",
+      "method": "onRequest",
+      "priority": 32
+    }
+  ],
+  "order.created": {
+    "listeners": [
+      {
+        "service": "App\\EventListener\\OrderSubscriber",
+        "class": "App\\EventListener\\OrderSubscriber",
+        "method": "onCreatedHigh",
+        "priority": 20
+      }
+    ]
+  }
+}

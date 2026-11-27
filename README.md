@@ -8,9 +8,9 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers up to **16 tools**, grouped into selectable modules (see
+The plugin registers up to **18 tools**, grouped into selectable modules (see
 [Modules](#modules)). The default `"modules": "auto"` registers every tool that
-applies to the project — a PHP project gets all 16. This table mirrors the
+applies to the project — a Symfony PHP project gets all 18. This table mirrors the
 authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -52,6 +52,18 @@ authoritative tool stack in [AGENTS.md](AGENTS.md).
 | **`lsp_references`** | ~90%          | Find all references to a symbol at a position                      |
 
 The LSP registry resolves each server's project root from markers (nearest `tsconfig.json`/`package.json`, `deno.json(c)`, `go.work` before `go.mod`, `composer.json`, and the outermost Cargo `[workspace]`), pools one client per server and canonical root, and shuts idle clients down after 10 minutes. Deno projects use `deno lsp`; `.supertools.json` accepts `lsp.servers` overrides and `lsp.idleTimeoutMs` (negative disables idle shutdown).
+
+### Symfony (2)
+
+| Tool                | Description                                                              |
+| ------------------- | ------------------------------------------------------------------------ |
+| **`symfony_service`** | Service by id/class/partial/tag: class, arguments, tags, decorator chain |
+| **`symfony_events`**  | Event listeners sorted by priority (`class::method prio`)                |
+
+Both call `bin/console` (`debug:container` / `debug:event-dispatcher` with
+`--format=json`) and fall back to static `config/services.*` +
+`getSubscribedEvents()` with `source: "static", incomplete: true` when the console
+cannot run.
 
 ### AST / PHP Refactoring (3)
 
@@ -137,6 +149,27 @@ appended.
 - `path` (string) — File to outline (absolute or relative to the project directory)
 - `paths` (string[], optional) — Additional files to outline in the same call (batch)
 - `max_depth` (number, optional) — Maximum nesting depth to include (default: `2`)
+
+### `symfony_service`
+
+Look up a Symfony service by id, FQCN, partial id or `tag:<name>`. Returns class,
+arguments, tags, alias and decorator chain. Runtime data comes from
+`bin/console debug:container --format=json`; without a working console the tool
+reads `config/services.(yaml|yml|xml)` and marks the result
+`source: "static", incomplete: true`.
+
+**Parameters:** `service` (string, optional), `tag` (string, optional),
+`limit` (number, default 20), `directory` (string, optional).
+
+### `symfony_events`
+
+List listeners for an event, sorted by priority. Runtime data comes from
+`bin/console debug:event-dispatcher --format=json`; the static fallback uses
+`kernel.event_listener` tags and `getSubscribedEvents()` and is marked
+`incomplete`.
+
+**Parameters:** `event` (string), `limit` (number, default 50),
+`directory` (string, optional).
 
 ### `extract_method`
 

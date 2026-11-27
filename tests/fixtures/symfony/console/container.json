@@ -1,0 +1,41 @@
+{
+  "App\\Service\\Mailer": {
+    "class": "App\\Service\\Mailer",
+    "public": false,
+    "tags": [
+      {
+        "name": "kernel.event_listener",
+        "attributes": {
+          "event": "kernel.request",
+          "method": "onRequest",
+          "priority": "10"
+        }
+      },
+      {
+        "name": "monolog.logger",
+        "attributes": { "channel": "mailer" }
+      }
+    ],
+    "arguments": ["@mailer.transport", { "name": "inner" }],
+    "decorated_services": []
+  },
+  "App\\Service\\DecoratingMailer": {
+    "class": "App\\Service\\DecoratingMailer",
+    "public": false,
+    "tags": [],
+    "arguments": ["@App\\Service\\Mailer.inner"],
+    "decorated_services": ["App\\Service\\Mailer"]
+  },
+  "app.mailer": {
+    "class": null,
+    "public": true,
+    "alias": "App\\Service\\Mailer",
+    "tags": []
+  },
+  "App\\Service\\Other": {
+    "class": "App\\Service\\Other",
+    "public": false,
+    "tags": [{ "name": "app.custom", "attributes": { "channel": "other" } }],
+    "arguments": []
+  }
+}

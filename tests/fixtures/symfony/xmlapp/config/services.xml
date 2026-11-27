@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<container xmlns="http://symfony.com/schema/dic/services">
+  <services>
+    <service id="app.xml_service" class="App\Xml\Service" public="true">
+      <tag name="kernel.event_listener" event="xml.event" method="onXml" priority="5"/>
+      <argument>@dep.service</argument>
+      <argument type="service" id="logger.service"/>
+    </service>
+    <service id="app.xml_alias" alias="app.xml_service" public="true"/>
+  </services>
+</container>

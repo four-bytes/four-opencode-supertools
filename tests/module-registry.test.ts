@@ -59,6 +59,15 @@ describe('module registry — explicit selection', () => {
     expect(names).not.toContain('lsp_references');
   });
 
+  it('registers both Symfony tools for modules:["symfony"]', async () => {
+    const { logger } = captureLogger();
+    const tools = await buildToolMap({ modules: ['symfony'] }, { logger });
+    const names = Object.keys(tools);
+
+    expect(names).toContain('symfony_service');
+    expect(names).toContain('symfony_events');
+  });
+
   it('pulls php in through shopware → symfony → php', async () => {
     const { logger } = captureLogger();
     const tools = await buildToolMap({ modules: ['shopware'] }, { logger });
