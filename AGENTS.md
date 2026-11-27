@@ -7,7 +7,9 @@
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Test: `bun test`
 
-## Tool Stack (16 tools)
+## Tool Stack (16 tools, grouped into modules)
+Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `go`, `rust`, `symfony`, `doctrine`, `shopware` reserved for later issues. See `src/lib/modules/` and `src/modules/`.
+
 ### File Editing (4 tools)
 - `batch_edit` — grep→replace across N files. Saves ~80% tokens vs. grep→read→edit×N
 - `lint_file` — run linter, return errors+warnings. Auto-detects eslint/phpstan/ruff/golangci-lint (Go: package of the file). Saves ~60% tokens
@@ -37,10 +39,11 @@
 - `move_class` — move a class-like declaration; copies the source `declare()` block verbatim, copies referenced `use` imports, resolves the namespace from `composer.json` PSR-4 or an explicit `namespace`; never overwrites a non-empty target
 
 ## Architecture
-- Entry: `src/four-opencode-supertools.ts` — registers all 16 tools
+- Entry: `src/four-opencode-supertools.ts` — delegates to the module registry (`src/lib/modules/`) and registers the active tool bundles
+- Modules: `src/modules/<id>.ts` — one definition per module, tools loaded lazily via dynamic import
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
 - Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
-- Tests: `tests/` — 182 tests, bun-native
+- Tests: `tests/` — 211 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)
