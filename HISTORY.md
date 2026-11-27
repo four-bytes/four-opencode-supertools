@@ -2,6 +2,11 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.6.1] - 2026-11-27
+
+### Fixed
+- Wire LSP registry shutdown to the plugin `dispose` hook. `peekLspRegistry()` returns the existing singleton without creating one, so dispose is a no-op when no registry was ever created (#113).
+
 ## [0.6.0] - 2026-11-27
 
 ### Added

@@ -3,6 +3,7 @@
 
 import type { Plugin } from '@opencode-ai/plugin';
 import { buildToolMap } from './lib/modules/registry';
+import { peekLspRegistry } from './lib/lsp-registry';
 
 const FourOpencodeSupertools: Plugin = async (ctx, options) => {
   const logger = (level: 'warn' | 'info' | 'debug', message: string) => {
@@ -21,7 +22,11 @@ const FourOpencodeSupertools: Plugin = async (ctx, options) => {
     logger,
   });
 
-  return { tool };
+  const dispose = async (): Promise<void> => {
+    await peekLspRegistry()?.dispose();
+  };
+
+  return { tool, dispose };
 };
 
 export default FourOpencodeSupertools;
