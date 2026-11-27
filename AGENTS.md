@@ -12,8 +12,8 @@ Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `go`, 
 
 ### File Editing (4 tools)
 - `batch_edit` — grep→replace across N files. Saves ~80% tokens vs. grep→read→edit×N
-- `lint_file` — run linter, return errors+warnings. Auto-detects eslint/phpstan/ruff/golangci-lint (Go: package of the file). Saves ~60% tokens
-- `run_tests` — run test file, return failures only. Auto-detects bun/phpunit/jest/vitest/go test. Saves ~50% tokens
+- `lint_file` — run linter, return errors+warnings. Auto-detects eslint/phpstan/ruff/golangci-lint (Go: package of the file) / cargo clippy (Rust: crate of the file). Saves ~60% tokens
+- `run_tests` — run test file, return failures only. Auto-detects bun/phpunit/jest/vitest/go test/cargo test. Saves ~50% tokens
 - `append_file` — append/prepend text to file. Saves ~95% tokens vs. patch for simple additions
 
 ### Smart Editing (3 tools)
