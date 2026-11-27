@@ -80,7 +80,7 @@ export class LspClient {
       this.proc = Bun.spawn(serverCommand, {
         stdin: 'pipe',
         stdout: 'pipe',
-        stderr: 'pipe',
+        stderr: 'ignore',
         env: opts?.env,
       });
 
@@ -276,9 +276,10 @@ export class LspClient {
 
   // ── Shutdown ───────────────────────────────────────────────
 
-  /** Graceful shutdown: shutdown request → exit notification → kill process. */
+  /** Graceful shutdown: shutdown request → exit notification → wait → kill. */
   async shutdown(): Promise<void> {
-    if (!this.proc) return;
+    const proc = this.proc;
+    if (!proc) return;
 
     this.shutdownRequested = true;
 
@@ -290,14 +291,24 @@ export class LspClient {
 
     this.notify('exit', null);
 
+    // Give the server ~2 s to exit on its own, then force-kill it.
+    const grace = new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, 2000);
+      (timer as { unref?: () => void }).unref?.();
+    });
     try {
-      this.proc.kill('SIGTERM');
+      await Promise.race([proc.exited, grace]);
+    } catch {
+      // The process may already be gone.
+    }
+    try {
+      if (proc.exitCode === null) proc.kill('SIGKILL');
     } catch {
       // Process may already be dead
     }
 
-    // Reject all in-flight requests before clearing
     for (const [, pending] of this.pending) {
+      clearTimeout(pending.timer);
       pending.reject(new Error('LSP client shutting down'));
     }
     this.pending.clear();
@@ -308,7 +319,7 @@ export class LspClient {
 
   /** Check if the client has an active process. */
   get isRunning(): boolean {
-    return this.proc !== null && !this.proc.killed;
+    return this.proc !== null && !this.proc.killed && this.proc.exitCode === null;
   }
 
   // ── JSON-RPC Communication ─────────────────────────────────
@@ -424,6 +435,12 @@ export class LspClient {
       }
     } finally {
       reader.releaseLock();
+      // Fail in-flight requests fast instead of waiting for their timeouts.
+      for (const [, pending] of this.pending) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error('LSP server exited'));
+      }
+      this.pending.clear();
       // Clear lifecycle state so isRunning reflects reality
       this.proc = null;
       this._initPromise = null;
@@ -560,28 +577,5 @@ export class LspClient {
         // Unknown notification — silently ignore
         break;
     }
-  }
-
-  /**
-   * Kill the server process and clean up all pending requests.
-   */
-  private killProcess(): void {
-    if (!this.proc) return;
-
-    try {
-      this.proc.kill('SIGTERM');
-    } catch {
-      // Process may already be dead
-    }
-
-    // Reject all pending requests
-    for (const [_id, pending] of this.pending) {
-      clearTimeout(pending.timer);
-      pending.reject(new Error('LSP server terminated'));
-    }
-    this.pending.clear();
-    this.proc = null;
-    this._initPromise = null;
-    logDebugEvent('lsp.kill', {});
   }
 }
