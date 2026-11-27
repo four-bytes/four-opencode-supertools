@@ -25,7 +25,10 @@ describe('loadSupertoolsConfig', () => {
     const result = loadSupertoolsConfig(dir);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.config).toEqual({ twig: { tags: {} } });
+      expect(result.config).toEqual({
+    twig: { tags: {} },
+    lsp: { idleTimeoutMs: null, servers: [] },
+  });
       expect(result.path).toBeNull();
     }
   });
@@ -110,5 +113,66 @@ describe('loadSupertoolsConfig', () => {
     if (!result.ok) {
       expect(result.key).toBe('twig.tags.x');
     }
+  });
+});
+
+describe('loadSupertoolsConfig — lsp', () => {
+  it('parses idleTimeoutMs and server overrides', () => {
+    writeConfig(
+      JSON.stringify({
+        lsp: {
+          idleTimeoutMs: 1234,
+          servers: [
+            {
+              id: 'typescript',
+              command: ['custom-ts', '--stdio'],
+              extensions: ['.ts'],
+              markers: ['tsconfig.json'],
+              rootMarkers: ['tsconfig.json'],
+              rootStrategy: 'nearest',
+              installHint: 'install it',
+              disable: false,
+            },
+          ],
+        },
+      })
+    );
+
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.config.lsp.idleTimeoutMs).toBe(1234);
+      expect(result.config.lsp.servers).toHaveLength(1);
+      expect(result.config.lsp.servers[0].id).toBe('typescript');
+      expect(result.config.lsp.servers[0].command).toEqual(['custom-ts', '--stdio']);
+      expect(result.config.lsp.servers[0].rootStrategy).toBe('nearest');
+    }
+  });
+
+  it('defaults lsp settings when the section is absent', () => {
+    writeConfig('{"twig":{"tags":{}}}');
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok && result.config.lsp).toEqual({ idleTimeoutMs: null, servers: [] });
+  });
+
+  it('rejects a non-numeric idleTimeoutMs and names the key', () => {
+    writeConfig('{"lsp":{"idleTimeoutMs":"soon"}}');
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.key).toBe('lsp.idleTimeoutMs');
+  });
+
+  it('rejects a server override without id', () => {
+    writeConfig('{"lsp":{"servers":[{"command":["x"]}]}}');
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.key).toBe('lsp.servers[0].id');
+  });
+
+  it('rejects an unknown rootStrategy', () => {
+    writeConfig('{"lsp":{"servers":[{"id":"x","rootStrategy":"magic"}]}}');
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.key).toBe('lsp.servers[0].rootStrategy');
   });
 });

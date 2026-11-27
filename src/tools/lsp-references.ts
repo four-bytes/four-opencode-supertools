@@ -4,6 +4,7 @@
 import { tool } from '@opencode-ai/plugin';
 import { logDebugEvent } from '../lib/debug-logger';
 import { relative } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { getLspRegistry } from '../lib/lsp-registry.js';
 
 const DEFAULT_MAX_RESULTS = 50;
@@ -20,7 +21,14 @@ interface LspReferencesOutput {
 }
 
 function toRelativePath(uri: string, baseDir: string): string {
-  const filePath = uri.startsWith('file://') ? uri.slice(7) : uri;
+  let filePath = uri;
+  if (uri.startsWith('file://')) {
+    try {
+      filePath = fileURLToPath(uri);
+    } catch {
+      filePath = uri.slice(7);
+    }
+  }
   const rel = relative(baseDir, filePath);
   if (rel.startsWith('..') || rel === '') return filePath;
   return './' + rel;
@@ -61,11 +69,12 @@ export const lspReferencesTool = tool({
 
     logDebugEvent('lsp_references.start', { file_path, line, character, lspLine, lspChar });
 
+    const baseDir = (args.directory as string | undefined) ?? ctx.directory ?? process.cwd();
     const registry = getLspRegistry();
-    const resolved = registry.resolveServer(file_path);
+    const resolved = registry.resolveServer(file_path, { configRoot: baseDir });
 
     if (!resolved) {
-      const config = registry.findConfig(file_path);
+      const config = registry.findConfig(file_path, baseDir);
       if (!config) {
         return {
           title: 'LSP References — No Server Configured',
@@ -98,7 +107,7 @@ export const lspReferencesTool = tool({
     }
 
     const { client, languageId } = resolved;
-    const uri = `file://${file_path}`;
+    const uri = pathToFileURL(file_path).href;
 
     // Read file content
     let fileText: string;
@@ -126,7 +135,6 @@ export const lspReferencesTool = tool({
     // Get all references
     const rawReferences = await client.references(uri, lspLine, lspChar);
 
-    const baseDir = (args.directory as string | undefined) ?? ctx.directory ?? process.cwd();
     const truncated = rawReferences.length > validatedMax;
     const limited = rawReferences.slice(0, validatedMax);
 

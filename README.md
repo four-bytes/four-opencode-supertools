@@ -51,6 +51,8 @@ authoritative tool stack in [AGENTS.md](AGENTS.md).
 | **`lsp_hover`**      | ~95%          | Type info and documentation for a symbol at a position            |
 | **`lsp_references`** | ~90%          | Find all references to a symbol at a position                      |
 
+The LSP registry resolves each server's project root from markers (nearest `tsconfig.json`/`package.json`, `deno.json(c)`, `go.work` before `go.mod`, `composer.json`, and the outermost Cargo `[workspace]`), pools one client per server and canonical root, and shuts idle clients down after 10 minutes. Deno projects use `deno lsp`; `.supertools.json` accepts `lsp.servers` overrides and `lsp.idleTimeoutMs` (negative disables idle shutdown).
+
 ### AST / PHP Refactoring (3)
 
 | Tool                | Description                                                                                  |

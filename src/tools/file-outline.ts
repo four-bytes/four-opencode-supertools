@@ -319,11 +319,12 @@ function collectTargets(path: string | undefined, paths: string[] | undefined): 
 async function tryLspOutline(
   absPath: string,
   text: string,
-  maxDepth: number
+  maxDepth: number,
+  configRoot: string
 ): Promise<OutlineSymbol[]> {
   let resolved: ReturnType<ReturnType<typeof getLspRegistry>['resolveServer']>;
   try {
-    resolved = getLspRegistry().resolveServer(absPath);
+    resolved = getLspRegistry().resolveServer(absPath, { configRoot });
   } catch {
     return [];
   }
@@ -356,7 +357,7 @@ async function buildOutlineFile(
   }
 
   const lineCount = countLines(text);
-  let symbols = await tryLspOutline(absPath, text, maxDepth);
+  let symbols = await tryLspOutline(absPath, text, maxDepth, baseDir);
   let regexFallback = false;
 
   if (symbols.length === 0) {

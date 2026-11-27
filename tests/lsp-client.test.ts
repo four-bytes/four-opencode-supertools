@@ -273,9 +273,8 @@ describe('LspClient — Request/Response Matching', () => {
     const result = await client.hover('file:///test-timeout.ts', 1, 1, 100);
     expect(result).toBeNull();
 
-    // Client should still be alive — the process is killed on timeout
-    // Actually, our killProcess kills the server on timeout
-    // For this test, we just check that null is returned
+    // A request timeout rejects the pending promise; the server process stays
+    // alive until shutdown() is called explicitly.
 
     await client.shutdown();
   });
@@ -501,10 +500,11 @@ describe('LspRegistry — singleton', () => {
 
 describe('LspRegistry — DEFAULT_SERVERS', () => {
   it('contains all expected language servers', () => {
-    expect(DEFAULT_SERVERS.length).toBe(5);
+    expect(DEFAULT_SERVERS.length).toBe(6);
 
     const commands = DEFAULT_SERVERS.map((s) => s.command[0]);
     expect(commands).toContain('typescript-language-server');
+    expect(commands).toContain('deno');
     expect(commands).toContain('gopls');
     expect(commands).toContain('pyright-langserver');
     expect(commands).toContain('rust-analyzer');

@@ -2,6 +2,17 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.5.0] - 2026-11-27
+
+### Added
+- LSP: marker-based server selection including `deno lsp` (#106).
+- LSP: per-server project-root resolution for TypeScript/Deno, Go (`go.work` before `go.mod`), PHP and Cargo workspaces (outermost `[workspace]`, `package.workspace` honoured) (#106).
+- LSP: `.supertools.json` `lsp.servers` overrides and `lsp.idleTimeoutMs` via the framework config loader (#106).
+
+### Changed
+- LSP: client pool keyed by (server, canonical root); idle clients shut down after a configurable timeout via shutdown → exit → kill (#106).
+- LSP: tools pass their project directory to the config loader (#106).
+
 ## [0.4.7] - 2026-11-27
 
 ### Changed

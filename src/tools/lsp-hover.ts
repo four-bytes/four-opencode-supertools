@@ -89,11 +89,12 @@ export const lspHoverTool = tool({
 
     logDebugEvent('lsp_hover.start', { file_path, line, character, lspLine, lspChar });
 
+    const configRoot = _ctx.directory ?? process.cwd();
     const registry = getLspRegistry();
-    const resolved = registry.resolveServer(file_path);
+    const resolved = registry.resolveServer(file_path, { configRoot });
 
     if (!resolved) {
-      const config = registry.findConfig(file_path);
+      const config = registry.findConfig(file_path, configRoot);
       if (!config) {
         return {
           title: 'LSP Hover',
