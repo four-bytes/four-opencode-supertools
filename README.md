@@ -253,6 +253,29 @@ the modules are merged.
 To filter tools for a single agent, use opencode's own `tools` config instead of
 `disable` — module selection is per project, agent filtering is per agent.
 
+## .supertools.json
+
+Per-project configuration for the framework tools lives in `.supertools.json` at
+the project root (the directory holding `composer.json`). The file is optional;
+without it the tools use their defaults. It is read per project root and cached
+for the process lifetime.
+
+```json
+{
+  "twig": {
+    "tags": {
+      "my_tag": "block",
+      "another_tag": "include"
+    }
+  }
+}
+```
+
+`twig.tags` maps a Twig tag name to its kind. Unknown keys are ignored for
+forward compatibility. Invalid schemas are reported with the offending key (for
+example `twig.tags.my_tag`) and are never silently dropped. This file is the
+config base for the Symfony/Shopware tools.
+
 ## Install
 
 Add to your `opencode.json`:

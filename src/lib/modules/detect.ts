@@ -21,7 +21,7 @@ export interface ProjectMarkers {
   shopware: boolean;
 }
 
-interface ComposerJson {
+export interface ComposerJson {
   require?: Record<string, string>;
   'require-dev'?: Record<string, string>;
 }
@@ -36,7 +36,7 @@ function projectRoots(ctx: DetectionContext): string[] {
   return roots;
 }
 
-function readComposer(root: string): ComposerJson | null {
+export function readComposer(root: string): ComposerJson | null {
   const path = join(root, 'composer.json');
   try {
     if (!existsSync(path)) return null;
@@ -48,7 +48,7 @@ function readComposer(root: string): ComposerJson | null {
   }
 }
 
-function hasPackage(composer: ComposerJson, name: string): boolean {
+export function composerHasPackage(composer: ComposerJson, name: string): boolean {
   const require = composer.require;
   const requireDev = composer['require-dev'];
   if (require && typeof require === 'object' && name in require) return true;
@@ -65,7 +65,7 @@ export function detectMarkers(ctx: DetectionContext): ProjectMarkers {
   const rust = roots.some((root) => existsSync(join(root, 'Cargo.toml')));
 
   const hasDependency = (name: string): boolean =>
-    composers.some(({ composer }) => (composer ? hasPackage(composer, name) : false));
+    composers.some(({ composer }) => (composer ? composerHasPackage(composer, name) : false));
 
   let symfony = hasDependency('symfony/framework-bundle');
   const doctrine = hasDependency('doctrine/orm');

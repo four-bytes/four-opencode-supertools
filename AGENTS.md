@@ -43,7 +43,8 @@ Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `go`, 
 - Modules: `src/modules/<id>.ts` — one definition per module, tools loaded lazily via dynamic import
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
 - Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
-- Tests: `tests/` — 211 tests, bun-native
+- Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
+- Tests: `tests/` — 249 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)
