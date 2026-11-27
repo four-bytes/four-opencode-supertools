@@ -8,8 +8,10 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers **16 tools**. This table mirrors the authoritative tool
-stack in [AGENTS.md](AGENTS.md).
+The plugin registers up to **16 tools**, grouped into selectable modules (see
+[Modules](#modules)). The default `"modules": "auto"` registers every tool that
+applies to the project — a PHP project gets all 16. This table mirrors the
+authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
 
@@ -213,6 +215,43 @@ Move a class, interface, trait or enum to another file using tree-sitter.
 - `className` (string) — Class-like name to move
 - `targetPath` (string) — Target PHP file path (absolute or relative to cwd)
 - `namespace` (string, optional) — Explicit target namespace
+
+## Modules
+
+Tools are grouped into modules that are selected per project. Configure them in
+`opencode.json`:
+
+```json
+["@four-bytes/four-opencode-supertools", { "modules": "auto" }]
+["@four-bytes/four-opencode-supertools", { "modules": ["core", "lsp", "shopware"] }]
+["@four-bytes/four-opencode-supertools", { "disable": ["sonar_search"] }]
+```
+
+| Module     | Tools                                         | Auto-detected by                       |
+| ---------- | --------------------------------------------- | -------------------------------------- |
+| `core`     | 9 file-editing and meta tools                 | always on                              |
+| `search`   | `sonar_search`                                | always on in auto mode                 |
+| `lsp`      | `file_outline`, `lsp_hover`, `lsp_references` | always on in auto mode                 |
+| `php`      | `extract_method`, `rename_symbol`, `move_class` | `composer.json`                      |
+| `go`       | (refactoring tools land in a later issue)     | `go.mod`                               |
+| `rust`     | (refactoring tools land in a later issue)     | `Cargo.toml`                           |
+| `symfony`  | (later issue)                                 | `symfony/framework-bundle` in composer |
+| `doctrine` | (later issue)                                 | `doctrine/orm` in composer             |
+| `shopware` | (later issue)                                 | `shopware/core` in composer            |
+
+Auto mode always starts with `core`, `search` and `lsp`, then adds `php`, `go`,
+`rust`, `symfony`, `doctrine` and `shopware` when their marker is present in the
+project directory or worktree. For the framework markers, `composer.json` means
+the `require` or `require-dev` section names the package; a shopware project also
+counts as symfony and PHP.
+
+Dependencies are resolved transitively: `go` and `rust` require `lsp`, `symfony`
+requires `php`, `doctrine` and `shopware` require `symfony`. `core` is always
+included, whatever list you pass. `disable` removes individual tool names after
+the modules are merged.
+
+To filter tools for a single agent, use opencode's own `tools` config instead of
+`disable` — module selection is per project, agent filtering is per agent.
 
 ## Install
 

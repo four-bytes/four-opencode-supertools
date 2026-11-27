@@ -1,0 +1,5 @@
+{
+  "require": {
+    "shopware/core": "^6.6"
+  }
+}
