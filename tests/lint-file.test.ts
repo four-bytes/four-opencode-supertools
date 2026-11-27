@@ -8,6 +8,7 @@ import {
   findGoModuleRoot,
   lintFileTool,
   parseClippyJson,
+  parseCargoWorkspaceRoot,
 } from '../src/tools/lint-file';
 
 function mockCtx(dir: string) {
@@ -194,7 +195,7 @@ describe('lint_file Rust support', () => {
 
   it('builds the clippy command', () => {
     const { cmd } = buildLintCommand('clippy', join(testDir, 'src', 'lib.rs'), testDir);
-    expect(cmd).toEqual(['cargo', 'clippy', '--message-format=json']);
+    expect(cmd).toEqual(['cargo', 'clippy', '--all-targets', '--message-format=json']);
   });
 
   it('parses and filters clippy diagnostics to the target file', () => {
@@ -233,4 +234,48 @@ describe('lint_file Rust support', () => {
     },
     120_000
   );
+});
+
+describe('lint_file Rust workspace support', () => {
+  const fixtureDir = new URL('./fixtures/rust', import.meta.url).pathname;
+  const workspaceRoot = '/tmp/supertools-rust-workspace';
+
+  it('parses the workspace root from cargo metadata', () => {
+    const metadata = readFileSync(join(fixtureDir, 'workspace-metadata.json'), 'utf-8');
+    expect(parseCargoWorkspaceRoot(metadata)).toBe(workspaceRoot);
+  });
+
+  it('returns null for invalid cargo metadata', () => {
+    expect(parseCargoWorkspaceRoot('not json')).toBeNull();
+    expect(parseCargoWorkspaceRoot('{}')).toBeNull();
+  });
+
+  it('returns diagnostics for a workspace member test target', () => {
+    const output = readFileSync(join(fixtureDir, 'workspace-clippy.jsonl'), 'utf-8');
+    const target = join(workspaceRoot, 'crates/a/tests/foo.rs');
+    const parsed = parseClippyJson(output, target, join(workspaceRoot, 'crates/a'), workspaceRoot);
+
+    expect(parsed.errorCount).toBe(1);
+    expect(parsed.warningCount).toBe(0);
+    expect(parsed.errors[0]).toContain('crates/a/tests/foo.rs:7:5 error:');
+  });
+
+  it('filters a member crate file against the workspace root', () => {
+    const output = readFileSync(join(fixtureDir, 'workspace-clippy.jsonl'), 'utf-8');
+    const target = join(workspaceRoot, 'crates/a/src/lib.rs');
+    const parsed = parseClippyJson(output, target, join(workspaceRoot, 'crates/a'), workspaceRoot);
+
+    expect(parsed.warningCount).toBe(1);
+    expect(parsed.warnings[0]).toContain('crates/a/src/lib.rs:4:9 warning:');
+    expect(parsed.warnings.join('\n')).not.toContain('crates/b/src/lib.rs');
+  });
+
+  it('does not leak diagnostics that only share a basename', () => {
+    const output = readFileSync(join(fixtureDir, 'workspace-clippy.jsonl'), 'utf-8');
+    const target = join(workspaceRoot, 'crates/a/tests/foo.rs');
+    const parsed = parseClippyJson(output, target, join(workspaceRoot, 'crates/a'), workspaceRoot);
+
+    expect(parsed.warningCount).toBe(0);
+    expect(parsed.errors.join('\n')).not.toContain('other/foo.rs');
+  });
 });

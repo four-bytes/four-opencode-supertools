@@ -3,7 +3,7 @@
 ## Pointer
 - Meta-repo: `~/four-opencode-plugins/`
 - Repo: `four-bytes/four-opencode-supertools`
-- Package: `@four-bytes/four-opencode-supertools` v0.4.5
+- Package: `@four-bytes/four-opencode-supertools` v0.4.7
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Test: `bun test`
 
@@ -44,7 +44,7 @@ Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `go`, 
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
 - Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 249 tests, bun-native
+- Tests: `tests/` — 258 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

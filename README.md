@@ -78,7 +78,7 @@ Search and replace across multiple files matching a glob pattern.
 
 ### `lint_file`
 
-Run appropriate linter on a file and return only errors/warnings. For `.go` files golangci-lint (v2) lints the file's package from the nearest `go.mod`; `govet` and `staticcheck` are part of its standard set. For `.rs` files `cargo clippy` lints the whole crate from the nearest `Cargo.toml`, with diagnostics filtered to the file.
+Run appropriate linter on a file and return only errors/warnings. For `.go` files golangci-lint (v2) lints the file's package from the nearest `go.mod`; `govet` and `staticcheck` are part of its standard set. For `.rs` files `cargo clippy --all-targets` lints the crate including tests, benches and examples from the nearest `Cargo.toml`; diagnostic paths are normalised against the Cargo workspace root and filtered to the exact file (no basename matching).
 
 **Parameters:**
 

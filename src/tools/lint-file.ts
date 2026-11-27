@@ -7,9 +7,9 @@ import { extname, relative, resolve, sep } from 'node:path';
 import { $ } from 'bun';
 import { logDebugEvent } from '../lib/debug-logger';
 import { findGoModuleRoot, goPackageTarget } from '../lib/go-module';
-import { findCargoRoot } from '../lib/rust-module';
+import { CARGO_METADATA_ARGS, findCargoRoot, parseCargoWorkspaceRoot } from '../lib/rust-module';
 
-export { findGoModuleRoot, findCargoRoot };
+export { findGoModuleRoot, findCargoRoot, parseCargoWorkspaceRoot };
 
 type LinterType = 'eslint' | 'phpstan' | 'pint' | 'ruff' | 'golangci' | 'clippy' | 'auto';
 
@@ -65,7 +65,7 @@ export function buildLintCommand(
       return { cmd: ['ruff', 'check', filePath, '--output-format=concise'], timeout: 30000 };
     case 'clippy':
       return {
-        cmd: ['cargo', 'clippy', '--message-format=json'],
+        cmd: ['cargo', 'clippy', '--all-targets', '--message-format=json'],
         timeout: 180000,
       };
     default:
@@ -76,7 +76,8 @@ export function buildLintCommand(
 export function parseClippyJson(
   output: string,
   targetFile: string,
-  cargoRoot: string
+  cargoRoot: string,
+  workspaceRoot?: string
 ): {
   errors: string[];
   warnings: string[];
@@ -86,6 +87,8 @@ export function parseClippyJson(
   const errors: string[] = [];
   const warnings: string[] = [];
   const target = resolve(targetFile);
+  // Clippy paths are relative to the Cargo workspace root when the crate is a member.
+  const pathRoot = resolve(workspaceRoot ?? cargoRoot);
 
   for (const rawLine of output.split('\n')) {
     const line = rawLine.trim();
@@ -119,12 +122,12 @@ export function parseClippyJson(
     const spans = entry.message.spans ?? [];
     const span = spans.find((s) => {
       if (typeof s.file_name !== 'string') return false;
-      return resolve(cargoRoot, s.file_name) === target;
+      return resolve(pathRoot, s.file_name) === target;
     });
     if (!span) continue;
 
-    const absSpan = resolve(cargoRoot, span.file_name as string);
-    const relPath = relative(cargoRoot, absSpan).split(sep).join('/');
+    const absSpan = resolve(pathRoot, span.file_name as string);
+    const relPath = relative(pathRoot, absSpan).split(sep).join('/');
     const code = entry.message.code?.code;
     const formatted = `${relPath}:${span.line_start ?? 0}:${span.column_start ?? 0} ${level}: ${
       entry.message.message ?? ''
@@ -186,7 +189,7 @@ Auto-detects the appropriate linter based on file extension:
 - .php → PHPStan (or pint with linter: "pint")
 - .py → Ruff
 - .go → golangci-lint (lints the file's package, run from the nearest go.mod)
-- .rs → cargo clippy (whole crate, diagnostics filtered to the file)
+- .rs → cargo clippy --all-targets (crate incl. tests/benches/examples; diagnostics filtered to the exact file, paths normalised against the Cargo workspace root)
 
 Returns structured output: error count, warning count, and formatted error list.`,
 
@@ -224,6 +227,7 @@ Returns structured output: error count, warning count, and formatted error list.
       // 3. Build and run command
       let cwd = directory;
       let cargoRoot: string | null = null;
+      let cargoWorkspaceRoot: string | null = null;
       if (linter === 'golangci') {
         const moduleRoot = findGoModuleRoot(resolve(directory, file_path));
         if (!moduleRoot) {
@@ -238,6 +242,16 @@ Returns structured output: error count, warning count, and formatted error list.
         cwd = cargoRoot;
         if (!Bun.which('cargo')) {
           return '⚠️ cargo not found. Install the Rust toolchain: https://rustup.rs (and run: rustup component add clippy)';
+        }
+        // Diagnostic paths are relative to the workspace root, which can sit above the
+        // nearest (member) Cargo.toml. Fall back to the crate root if metadata fails.
+        try {
+          const metadata = await $`${CARGO_METADATA_ARGS}`.cwd(cargoRoot).quiet().nothrow();
+          if (metadata.exitCode === 0) {
+            cargoWorkspaceRoot = parseCargoWorkspaceRoot(metadata.stdout.toString());
+          }
+        } catch {
+          cargoWorkspaceRoot = null;
         }
       }
       const { cmd, timeout } = buildLintCommand(linter, file_path, cwd);
@@ -278,7 +292,12 @@ Returns structured output: error count, warning count, and formatted error list.
       let result: string;
       if (linter === 'clippy') {
         const root = cargoRoot ?? cwd;
-        const parsed = parseClippyJson(output, resolve(directory, file_path), root);
+        const parsed = parseClippyJson(
+          output,
+          resolve(directory, file_path),
+          root,
+          cargoWorkspaceRoot ?? undefined
+        );
         if (parsed.errorCount === 0 && parsed.warningCount === 0) {
           if (exitCode === 0) {
             result = `✅ No lint errors in ${file_path}`;
