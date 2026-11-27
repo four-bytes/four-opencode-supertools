@@ -15,6 +15,19 @@ export function findCargoRoot(filePath: string): string | null {
   }
 }
 
+// Parse `cargo metadata --format-version 1 --no-deps` output for the workspace root.
+// Clippy reports diagnostic paths relative to this root, not to the crate root.
+export function parseCargoWorkspaceRoot(metadataJson: string): string | null {
+  try {
+    const metadata = JSON.parse(metadataJson) as { workspace_root?: unknown };
+    return typeof metadata.workspace_root === 'string' ? metadata.workspace_root : null;
+  } catch {
+    return null;
+  }
+}
+
+export const CARGO_METADATA_ARGS = ['cargo', 'metadata', '--format-version', '1', '--no-deps'];
+
 // `cargo test --test <name>` selector for integration tests under <root>/tests/, else no filter.
 export function cargoTestArgs(cargoRoot: string, testFile: string): string[] {
   const testsDir = join(resolve(cargoRoot), 'tests');

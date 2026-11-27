@@ -1,0 +1,4 @@
+{"reason":"compiler-message","message":{"level":"warning","message":"unused variable: `unused`","code":{"code":"unused_variables"},"spans":[{"file_name":"crates/a/src/lib.rs","line_start":4,"column_start":9}]}}
+{"reason":"compiler-message","message":{"level":"error","message":"mismatched types","code":{"code":"E0308"},"spans":[{"file_name":"crates/a/tests/foo.rs","line_start":7,"column_start":5}]}}
+{"reason":"compiler-message","message":{"level":"warning","message":"unused import: `std::fmt`","code":{"code":"unused_imports"},"spans":[{"file_name":"crates/b/src/lib.rs","line_start":1,"column_start":1}]}}
+{"reason":"compiler-message","message":{"level":"warning","message":"unused variable: `also_unused`","code":{"code":"unused_variables"},"spans":[{"file_name":"other/foo.rs","line_start":9,"column_start":9}]}}
