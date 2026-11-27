@@ -3,15 +3,20 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { existsSync } from 'node:fs';
-import { extname, relative, resolve, sep } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { $ } from 'bun';
 import { logDebugEvent } from '../lib/debug-logger';
 import { findGoModuleRoot, goPackageTarget } from '../lib/go-module';
 import { CARGO_METADATA_ARGS, findCargoRoot, parseCargoWorkspaceRoot } from '../lib/rust-module';
+import { findDenoRoot, findTsconfigRoot } from '../lib/ts-module';
 
-export { findGoModuleRoot, findCargoRoot, parseCargoWorkspaceRoot };
+export { findGoModuleRoot, findCargoRoot, findDenoRoot, findTsconfigRoot, parseCargoWorkspaceRoot };
 
-type LinterType = 'eslint' | 'phpstan' | 'pint' | 'ruff' | 'golangci' | 'clippy' | 'auto';
+type LinterType =
+  'eslint' | 'phpstan' | 'pint' | 'ruff' | 'golangci' | 'clippy' | 'tsc' | 'deno' | 'auto';
+
+const TS_JS_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
 
 function detectLinter(filePath: string): LinterType {
   const ext = extname(filePath).toLowerCase();
@@ -20,7 +25,9 @@ function detectLinter(filePath: string): LinterType {
     case '.tsx':
     case '.js':
     case '.jsx':
-      return 'eslint';
+    case '.mjs':
+    case '.cjs':
+      return findDenoRoot(filePath) ? 'deno' : 'eslint';
     case '.php':
       // Prefer phpstan if available, fall back to pint for style
       return 'phpstan';
@@ -68,9 +75,231 @@ export function buildLintCommand(
         cmd: ['cargo', 'clippy', '--all-targets', '--message-format=json'],
         timeout: 180000,
       };
+    case 'tsc': {
+      // tsc checks a whole project: point it at the nearest tsconfig.json directory.
+      const root = moduleRoot ?? findTsconfigRoot(filePath) ?? '.';
+      return { cmd: ['bun', 'x', 'tsc', '--noEmit', '-p', root], timeout: 180000 };
+    }
+    case 'deno':
+      // deno check runs as a second command from the same root (see execute).
+      return { cmd: ['deno', 'lint', '--json', filePath], timeout: 30000 };
     default:
       return { cmd: ['bun', 'x', 'eslint', filePath], timeout: 30000 };
   }
+}
+
+// `bun x tsc` resolves a local binary first, then PATH. Mirror that lookup so a
+// missing tsc is reported cleanly instead of surfacing raw bun-x output.
+export function findTscBinary(
+  root: string,
+  deps: {
+    which: (name: string) => string | null;
+    exists: (path: string) => boolean;
+  } = { which: (name) => Bun.which(name), exists: (path) => existsSync(path) }
+): string | null {
+  let dir = resolve(root);
+  for (;;) {
+    const bin = join(dir, 'node_modules', '.bin', 'tsc');
+    if (deps.exists(bin)) return bin;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return deps.which('tsc');
+}
+
+async function runCommand(
+  cmd: string[],
+  cwd: string,
+  timeout: number
+): Promise<{ output: string; exitCode: number | null }> {
+  try {
+    const result = await $`${cmd}`.cwd(cwd).quiet().nothrow();
+    return {
+      output: result.stdout.toString() + result.stderr.toString(),
+      exitCode: result.exitCode,
+    };
+  } catch {
+    const proc = Bun.spawn(cmd, { cwd, stdout: 'pipe', stderr: 'pipe' });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), timeout)
+    );
+    try {
+      const output = await Promise.race([new Response(proc.stdout).text(), timeoutPromise]);
+      return { output, exitCode: await proc.exited };
+    } catch {
+      proc.kill();
+      return { output: '', exitCode: null };
+    }
+  }
+}
+
+// Diagnostics are shown relative to the working dir when the file lives inside it, else by basename.
+function displayPath(absFile: string): string {
+  const rel = relative(process.cwd(), absFile).split(sep).join('/');
+  if (rel && !rel.startsWith('..')) return rel;
+  return basename(absFile);
+}
+
+interface ParsedDiagnostics {
+  errors: string[];
+  warnings: string[];
+  errorCount: number;
+  warningCount: number;
+}
+
+function denoUrlToPath(filename: string): string {
+  if (filename.startsWith('file://')) {
+    try {
+      return fileURLToPath(filename);
+    } catch {
+      return filename;
+    }
+  }
+  return resolve(filename);
+}
+
+// deno check writes ANSI colour codes even when piped; strip them before parsing.
+// The ESC char is built at runtime so it never appears as a source-level control char.
+const ANSI_ESCAPE = String.fromCharCode(0x1b);
+const ANSI_PATTERN = new RegExp(`${ANSI_ESCAPE}\\[[0-9;]*m`, 'g');
+
+function stripAnsi(text: string): string {
+  return text.replace(ANSI_PATTERN, '');
+}
+
+export function parseTscOutput(
+  output: string,
+  targetFile: string,
+  tsconfigDir: string
+): ParsedDiagnostics {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const target = resolve(targetFile);
+  const root = resolve(tsconfigDir);
+
+  for (const rawLine of output.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const match = line.match(/^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.*)$/);
+    if (!match) continue;
+
+    const [, rawPath, lineNo, col, level, code, message] = match;
+    const absFile = resolve(root, rawPath);
+    if (absFile !== target) continue;
+
+    const relPath = relative(root, absFile).split(sep).join('/');
+    const formatted = `${relPath}:${lineNo}:${col} ${level}: ${message} [${code}]`;
+    if (level === 'error') errors.push(formatted);
+    else warnings.push(formatted);
+  }
+
+  return { errors, warnings, errorCount: errors.length, warningCount: warnings.length };
+}
+
+interface DenoLintDiagnostic {
+  filename?: string;
+  range?: { start?: { line?: number; col?: number } };
+  code?: string;
+  message?: string;
+}
+
+export function parseDenoLintJson(output: string, targetFile: string): ParsedDiagnostics {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const target = resolve(targetFile);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(output);
+  } catch {
+    return { errors, warnings, errorCount: 0, warningCount: 0 };
+  }
+
+  const diagnostics = (parsed as { diagnostics?: unknown }).diagnostics;
+  if (!Array.isArray(diagnostics)) {
+    return { errors, warnings, errorCount: 0, warningCount: 0 };
+  }
+
+  for (const raw of diagnostics) {
+    const diagnostic = raw as DenoLintDiagnostic;
+    if (typeof diagnostic.filename !== 'string') continue;
+    if (resolve(denoUrlToPath(diagnostic.filename)) !== target) continue;
+
+    const line = diagnostic.range?.start?.line ?? 0;
+    // deno lint reports a 1-based line but a 0-based column.
+    const col = (diagnostic.range?.start?.col ?? 0) + 1;
+    const code = diagnostic.code ?? 'deno-lint';
+    const message = diagnostic.message ?? '';
+    errors.push(`${displayPath(target)}:${line}:${col} error: ${message} [${code}]`);
+  }
+
+  return { errors, warnings, errorCount: errors.length, warningCount: warnings.length };
+}
+
+export function parseDenoCheckOutput(
+  output: string,
+  targetFile: string,
+  root: string = process.cwd()
+): ParsedDiagnostics {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const target = resolve(targetFile);
+
+  let header: { code: string; level: 'error' | 'warning'; message: string } | null = null;
+  for (const rawLine of stripAnsi(output).split('\n')) {
+    const line = rawLine.trim();
+
+    const headerMatch = line.match(/^(?:error:\s*)?(TS\d+)\s+\[(ERROR|WARNING)\]:\s*(.*)$/);
+    if (headerMatch) {
+      header = {
+        code: headerMatch[1],
+        level: headerMatch[2] === 'ERROR' ? 'error' : 'warning',
+        message: headerMatch[3],
+      };
+      continue;
+    }
+
+    if (!header) continue;
+    const atMatch = line.match(/^at\s+(.+?):(\d+):(\d+)$/);
+    if (!atMatch) continue;
+
+    const rawPath = atMatch[1].startsWith('file://') ? denoUrlToPath(atMatch[1]) : atMatch[1];
+    const absFile = resolve(root, rawPath);
+    if (absFile === target) {
+      const formatted = `${displayPath(target)}:${atMatch[2]}:${atMatch[3]} ${header.level}: ${
+        header.message
+      } [${header.code}]`;
+      if (header.level === 'error') errors.push(formatted);
+      else warnings.push(formatted);
+    }
+    header = null;
+  }
+
+  return { errors, warnings, errorCount: errors.length, warningCount: warnings.length };
+}
+
+function formatDiagnosticResult(
+  filePath: string,
+  linter: string,
+  parsed: ParsedDiagnostics
+): string {
+  if (parsed.errorCount === 0 && parsed.warningCount === 0) {
+    return `✅ No lint errors in ${filePath}`;
+  }
+  const lines: string[] = [
+    `Lint results for ${filePath} (${linter}):`,
+    `  Errors: ${parsed.errorCount}, Warnings: ${parsed.warningCount}`,
+  ];
+  if (parsed.errors.length > 0) {
+    lines.push('\nErrors:');
+    lines.push(...parsed.errors.map((e) => `  ${e}`));
+  }
+  if (parsed.warnings.length > 0) {
+    lines.push('\nWarnings:');
+    lines.push(...parsed.warnings.map((w) => `  ${w}`));
+  }
+  return lines.join('\n');
 }
 
 export function parseClippyJson(
@@ -185,7 +414,7 @@ export const lintFileTool = tool({
   description: `Run a linter on a specific file and return only errors and warnings. Saves ~60% tokens vs. bash→read→parse.
 
 Auto-detects the appropriate linter based on file extension:
-- .ts/.tsx/.js/.jsx → ESLint
+- .ts/.tsx/.js/.jsx/.mjs/.cjs → Deno lint + deno check in a Deno project, else ESLint (add typecheck: true for tsc --noEmit)
 - .php → PHPStan (or pint with linter: "pint")
 - .py → Ruff
 - .go → golangci-lint (lints the file's package, run from the nearest go.mod)
@@ -205,12 +434,18 @@ Returns structured output: error count, warning count, and formatted error list.
       .string()
       .optional()
       .describe(
-        'Override auto-detection: "eslint", "phpstan", "pint", "ruff", "golangci", "clippy", or "auto" (default)'
+        'Override auto-detection: "eslint", "phpstan", "pint", "ruff", "golangci", "clippy", "tsc", "deno", or "auto" (default)'
+      ),
+    typecheck: tool.schema
+      .boolean()
+      .optional()
+      .describe(
+        'Run tsc --noEmit for TS/JS files in addition to the linter; ignored for Deno projects'
       ),
   },
 
   async execute(args, ctx) {
-    const { file_path, linter: linterArg } = args;
+    const { file_path, linter: linterArg, typecheck } = args;
     const directory = (args.directory as string | undefined) ?? ctx.directory;
 
     logDebugEvent('lint_file.start', { file_path, linter: linterArg });
@@ -223,6 +458,61 @@ Returns structured output: error count, warning count, and formatted error list.
 
       // 2. Determine linter
       const linter: LinterType = (linterArg as LinterType) || detectLinter(file_path);
+      const absFile = resolve(directory, file_path);
+      const isTsJs = TS_JS_EXTENSIONS.has(extname(file_path).toLowerCase());
+
+      // Deno project (auto or explicit): deno lint + deno check, merged.
+      if (linter === 'deno') {
+        const denoRoot = findDenoRoot(absFile);
+        if (!denoRoot) {
+          return `Error: No deno.json/deno.jsonc found above ${file_path}`;
+        }
+        if (!Bun.which('deno')) {
+          return '⚠️ deno not found. Install Deno: https://deno.land/#installation';
+        }
+        const lint = await runCommand(['deno', 'lint', '--json', absFile], denoRoot, 30000);
+        const check = await runCommand(['deno', 'check', absFile], denoRoot, 180000);
+        const lintParsed = parseDenoLintJson(lint.output, absFile);
+        const checkParsed = parseDenoCheckOutput(check.output, absFile, denoRoot);
+        const merged: ParsedDiagnostics = {
+          errors: [...lintParsed.errors, ...checkParsed.errors],
+          warnings: [...lintParsed.warnings, ...checkParsed.warnings],
+          errorCount: lintParsed.errorCount + checkParsed.errorCount,
+          warningCount: lintParsed.warningCount + checkParsed.warningCount,
+        };
+        if (merged.errorCount === 0 && merged.warningCount === 0) {
+          if (lint.exitCode === 0 && check.exitCode === 0) {
+            return `✅ No lint errors in ${file_path}`;
+          }
+          const tail = `${lint.output}\n${check.output}`.trim().split('\n').slice(-20).join('\n');
+          return `Error: deno lint/check failed (exit ${check.exitCode ?? lint.exitCode}) for ${file_path}:\n${tail}`;
+        }
+        logDebugEvent('lint_file.complete', { file_path, exitCode: check.exitCode });
+        return formatDiagnosticResult(file_path, 'deno', merged);
+      }
+
+      // Explicit tsc: only the type-check run.
+      if (linter === 'tsc') {
+        const tsconfigRoot = findTsconfigRoot(absFile);
+        if (!tsconfigRoot) {
+          return 'tsc: no tsconfig.json found — type-check skipped';
+        }
+        if (!findTscBinary(tsconfigRoot)) {
+          return '⚠️ tsc not available (bun x tsc)';
+        }
+        const { cmd, timeout } = buildLintCommand('tsc', absFile, tsconfigRoot);
+        const check = await runCommand(cmd, tsconfigRoot, timeout);
+        const parsed = parseTscOutput(check.output, absFile, tsconfigRoot);
+        if (parsed.errorCount === 0 && parsed.warningCount === 0) {
+          if (check.exitCode === 0) {
+            return `✅ No lint errors in ${file_path}`;
+          }
+          const tail = check.output.trim().split('\n').slice(-20).join('\n');
+          return `Error: tsc failed (exit ${check.exitCode}) for ${file_path}:\n${tail}`;
+        }
+        logDebugEvent('lint_file.complete', { file_path, exitCode: check.exitCode });
+        return formatDiagnosticResult(file_path, 'tsc', parsed);
+      }
 
       // 3. Build and run command
       let cwd = directory;
@@ -322,8 +612,23 @@ Returns structured output: error count, warning count, and formatted error list.
         }
       } else if (linter === 'eslint') {
         const parsed = parseEslintOutput(output);
+        const notes: string[] = [];
+        if (typecheck && isTsJs && !findDenoRoot(absFile)) {
+          const tsconfigRoot = findTsconfigRoot(absFile);
+          if (!tsconfigRoot) {
+            notes.push('tsc: no tsconfig.json found — type-check skipped');
+          } else {
+            const tsc = buildLintCommand('tsc', absFile, tsconfigRoot);
+            const check = await runCommand(tsc.cmd, tsconfigRoot, tsc.timeout);
+            const tscParsed = parseTscOutput(check.output, absFile, tsconfigRoot);
+            parsed.errors.push(...tscParsed.errors);
+            parsed.warnings.push(...tscParsed.warnings);
+            parsed.errorCount += tscParsed.errorCount;
+            parsed.warningCount += tscParsed.warningCount;
+          }
+        }
         if (parsed.errorCount === 0 && parsed.warningCount === 0) {
-          result = `✅ No lint errors in ${file_path}`;
+          result = [`✅ No lint errors in ${file_path}`, ...notes].join('\n');
         } else {
           const lines: string[] = [
             `Lint results for ${file_path} (${linter}):`,
@@ -337,6 +642,7 @@ Returns structured output: error count, warning count, and formatted error list.
             lines.push('\nWarnings:');
             lines.push(...parsed.warnings.map((w) => `  ${w}`));
           }
+          lines.push(...notes);
           result = lines.join('\n');
         }
       } else if (linter === 'golangci' && exitCode !== 0 && exitCode !== 1) {

@@ -8,6 +8,7 @@ import { coreModule } from '../../modules/core';
 import { searchModule } from '../../modules/search';
 import { lspModule } from '../../modules/lsp';
 import { phpModule } from '../../modules/php';
+import { typescriptModule } from '../../modules/typescript';
 import { goModule } from '../../modules/go';
 import { rustModule } from '../../modules/rust';
 import { symfonyModule } from '../../modules/symfony';
@@ -36,6 +37,7 @@ const CANONICAL_ORDER: ModuleId[] = [
   'lsp',
   'php',
   'go',
+  'typescript',
   'rust',
   'symfony',
   'doctrine',
@@ -48,6 +50,7 @@ const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
   lsp: lspModule,
   php: phpModule,
   go: goModule,
+  typescript: typescriptModule,
   rust: rustModule,
   symfony: symfonyModule,
   doctrine: doctrineModule,

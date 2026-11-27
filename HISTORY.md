@@ -2,6 +2,16 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.7.0] - 2026-11-28
+
+### Added
+- New `typescript` module (requires `lsp`), auto-detected via `tsconfig.json`, `package.json` or `deno.json(c)`; `lint_file` and `run_tests` gain TypeScript/Deno support (#107).
+- `lint_file`: `typecheck: true` runs `tsc --noEmit -p <nearest tsconfig>` and merges the file's diagnostics with the linter; the `tsc` linter and `deno` lint + check (JSON, ANSI-stripped) are also selectable (#107).
+- `run_tests`: `deno test` for Deno projects (failures only, `--filter` support) (#107).
+
+### Changed
+- `lint_file` / `run_tests` select Deno for `.ts`/`.js` files in a Deno project before ESLint/Bun; Bun projects keep `bun test` unchanged (#107).
+
 ## [0.6.2] - 2026-11-27
 
 ### Changed

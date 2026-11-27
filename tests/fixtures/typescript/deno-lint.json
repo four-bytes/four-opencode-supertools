@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "diagnostics": [
+    {
+      "range": {
+        "start": { "line": 3, "col": 9, "bytePos": 42 },
+        "end": { "line": 3, "col": 14, "bytePos": 47 }
+      },
+      "filename": "file:///tmp/supertools-deno/src/lib.ts",
+      "message": "`value` is never used",
+      "code": "no-unused-vars",
+      "hint": "Remove the unused variable or prefix it with an underscore."
+    },
+    {
+      "range": {
+        "start": { "line": 1, "col": 1, "bytePos": 0 },
+        "end": { "line": 1, "col": 4, "bytePos": 3 }
+      },
+      "filename": "file:///tmp/supertools-deno/src/other.ts",
+      "message": "`x` is never used",
+      "code": "no-unused-vars",
+      "hint": "Remove the unused variable or prefix it with an underscore."
+    }
+  ],
+  "errors": [],
+  "checked_files": [
+    "file:///tmp/supertools-deno/src/lib.ts",
+    "file:///tmp/supertools-deno/src/other.ts"
+  ]
+}
