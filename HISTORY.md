@@ -2,6 +2,13 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.6.0] - 2026-11-27
+
+### Added
+- `symfony_service`: service lookup by id/class/partial/tag with class, arguments, tags, alias and decorator chain; runtime `debug:container --format=json` with static `config/services.*` fallback (`incomplete`) (#90).
+- `symfony_events`: event listeners sorted by priority; runtime `debug:event-dispatcher --format=json` with static `kernel.event_listener` tags + `getSubscribedEvents()` fallback (`incomplete`) (#90).
+- The `symfony` module (requires `php`) now registers both tools (#90).
+
 ## [0.5.0] - 2026-11-27
 
 ### Added

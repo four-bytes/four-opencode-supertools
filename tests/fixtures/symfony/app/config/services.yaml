@@ -1,0 +1,26 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+
+  App\Service\Mailer:
+    class: App\Service\Mailer
+    arguments:
+      - <EMAIL_1>'
+    tags:
+      - { name: kernel.event_listener, event: kernel.request, method: onRequest, priority: 10 }
+
+  app.mailer:
+    alias: App\Service\Mailer
+    public: true
+
+  App\Service\DecoratingMailer:
+    class: App\Service\DecoratingMailer
+    decorates: App\Service\Mailer
+    arguments:
+      - '@App\Service\Mailer.inner'
+
+  App\Service\Other:
+    class: App\Service\Other
+    tags:
+      - { name: app.custom, channel: other }
