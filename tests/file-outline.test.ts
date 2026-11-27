@@ -343,13 +343,19 @@ describe('file_outline tool', () => {
   it('returns a bare header for an empty file', async () => {
     writeFileSync(join(testDir, 'empty.txt'), '', 'utf-8');
 
-    const result = await fileOutlineTool.execute({ path: 'empty.txt' }, mockCtx(testDir));
+    const result = await fileOutlineTool.execute(
+      { path: 'empty.txt', max_depth: 2 },
+      mockCtx(testDir)
+    );
 
     expect(outputOf(result)).toBe('## empty.txt (0 lines)');
   });
 
   it('returns a bare header when the file cannot be read', async () => {
-    const result = await fileOutlineTool.execute({ path: 'missing.txt' }, mockCtx(testDir));
+    const result = await fileOutlineTool.execute(
+      { path: 'missing.txt', max_depth: 2 },
+      mockCtx(testDir)
+    );
 
     expect(outputOf(result)).toBe('## missing.txt (0 lines)');
   });
@@ -357,7 +363,10 @@ describe('file_outline tool', () => {
   it('falls back to the regex scanner and never leaks file contents', async () => {
     writeFileSync(join(testDir, 'sample.php'), PHP_SOURCE, 'utf-8');
 
-    const result = await fileOutlineTool.execute({ path: 'sample.php' }, mockCtx(testDir));
+    const result = await fileOutlineTool.execute(
+      { path: 'sample.php', max_depth: 2 },
+      mockCtx(testDir)
+    );
     const output = outputOf(result);
 
     expect(output.split('\n')[0]).toBe('## sample.php (20 lines) [regex fallback]');
@@ -371,7 +380,7 @@ describe('file_outline tool', () => {
     writeFileSync(join(testDir, 'b.ts'), TS_SOURCE, 'utf-8');
 
     const result = await fileOutlineTool.execute(
-      { path: 'a.php', paths: ['b.ts'] },
+      { path: 'a.php', max_depth: 2, paths: ['b.ts'] },
       mockCtx(testDir)
     );
     const output = outputOf(result);

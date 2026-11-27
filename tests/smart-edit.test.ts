@@ -6,6 +6,7 @@ import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { smartEditTool } from '../src/tools/smart-edit';
+import { toolObject } from './helpers';
 
 function mockCtx() {
   return {
@@ -37,13 +38,15 @@ describe('smart_edit tool', () => {
   });
 
   it('exact match replaces text', async () => {
-    const result = await smartEditTool.execute(
-      {
-        file_path: testFile,
-        old_string: "return 'world'",
-        new_string: "return 'universe'",
-      },
-      mockCtx()
+    const result = toolObject(
+      await smartEditTool.execute(
+        {
+          file_path: testFile,
+          old_string: "return 'world'",
+          new_string: "return 'universe'",
+        },
+        mockCtx()
+      )
     );
 
     expect(result.metadata.changed).toBe(true);
@@ -58,13 +61,15 @@ describe('smart_edit tool', () => {
   it('normalized match replaces with whitespace variance', async () => {
     writeFileSync(testFile, "function hello() {\n\treturn 'world';\n}", 'utf-8');
 
-    const result = await smartEditTool.execute(
-      {
-        file_path: testFile,
-        old_string: "  return 'world';",
-        new_string: "  return 'mars';",
-      },
-      mockCtx()
+    const result = toolObject(
+      await smartEditTool.execute(
+        {
+          file_path: testFile,
+          old_string: "  return 'world';",
+          new_string: "  return 'mars';",
+        },
+        mockCtx()
+      )
     );
 
     expect(result.metadata.changed).toBe(true);
@@ -107,14 +112,16 @@ describe('smart_edit tool', () => {
   it('allows multiple matches when allow_multiple is true', async () => {
     writeFileSync(testFile, 'foo\nfoo\nbar\n', 'utf-8');
 
-    const result = await smartEditTool.execute(
-      {
-        file_path: testFile,
-        old_string: 'foo',
-        new_string: 'baz',
-        allow_multiple: true,
-      },
-      mockCtx()
+    const result = toolObject(
+      await smartEditTool.execute(
+        {
+          file_path: testFile,
+          old_string: 'foo',
+          new_string: 'baz',
+          allow_multiple: true,
+        },
+        mockCtx()
+      )
     );
 
     expect(result.metadata.matches).toBe(2);

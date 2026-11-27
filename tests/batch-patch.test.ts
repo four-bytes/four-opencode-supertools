@@ -6,6 +6,7 @@ import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { batchPatchTool } from '../src/tools/batch-patch';
+import { toolObject } from './helpers';
 
 function mockCtx() {
   return {
@@ -47,7 +48,7 @@ describe('batch_patch tool', () => {
       { file_path: file2, patch: '@@ -1 +1 @@\n-foo bar\n+foo baz' },
     ]);
 
-    const result = await batchPatchTool.execute({ patches }, mockCtx());
+    const result = toolObject(await batchPatchTool.execute({ patches }, mockCtx()));
     expect(result.metadata.applied).toHaveLength(2);
     expect(result.metadata.failed).toHaveLength(0);
     expect(readFileSync(file1, 'utf-8')).toContain('hello universe');
@@ -60,7 +61,7 @@ describe('batch_patch tool', () => {
       { file_path: '/tmp/nonexistent-batch-patch-test.txt', patch: 'bad' },
     ]);
 
-    const result = await batchPatchTool.execute({ patches }, mockCtx());
+    const result = toolObject(await batchPatchTool.execute({ patches }, mockCtx()));
     expect(result.metadata.failed).not.toHaveLength(0);
     expect(result.metadata.applied).toHaveLength(1); // First one still applies
   });
@@ -72,7 +73,7 @@ describe('batch_patch tool', () => {
       { file_path: '/tmp/nonexistent-atomic-rollback.txt', patch: 'bad patch' },
     ]);
 
-    const result = await batchPatchTool.execute({ patches, atomic: true }, mockCtx());
+    const result = toolObject(await batchPatchTool.execute({ patches, atomic: true }, mockCtx()));
     expect(result.metadata.failed).not.toHaveLength(0);
     // file1 should be rolled back
     expect(readFileSync(file1, 'utf-8')).toBe(original1);

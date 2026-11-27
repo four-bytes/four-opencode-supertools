@@ -191,7 +191,9 @@ describe('lsp_references tool', () => {
   afterEach(async () => {
     try {
       rmSync(testDir, { recursive: true });
-    } catch (_err) { /* test cleanup */ }
+    } catch {
+      /* test cleanup */
+    }
     const { getLspRegistry } = await import('../src/lib/lsp-registry');
     await getLspRegistry().shutdownAll();
     resetLspRegistry();
@@ -199,17 +201,19 @@ describe('lsp_references tool', () => {
 
   it('returns available=true with references from mock LSP server', async () => {
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspReferencesTool.execute(
-      { file_path: testFile, line: 1, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspReferencesTool.execute(
+        { file_path: testFile, line: 1, character: 1, max_results: 50 },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(true);
     expect(result.file).toBe(testFile);
     expect(result.position).toEqual({ line: 1, character: 1 });
     expect(result.count).toBeGreaterThan(0);
     expect(Array.isArray(result.references)).toBe(true);
-    expect((result.references as unknown[]).length).toBe(result.count);
+    expect((result.references as unknown[]).length).toBe(Number(result.count));
   });
 
   it('returns available=false when no LSP server for file type', async () => {
@@ -217,10 +221,12 @@ describe('lsp_references tool', () => {
     writeFileSync(noServerFile, 'some content', 'utf-8');
 
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspReferencesTool.execute(
-      { file_path: noServerFile, line: 1, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspReferencesTool.execute(
+        { file_path: noServerFile, line: 1, character: 1, max_results: 50 },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(false);
     expect(result.hint).toBeDefined();
@@ -230,10 +236,17 @@ describe('lsp_references tool', () => {
 
   it('returns error when file not found', async () => {
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspReferencesTool.execute(
-      { file_path: join(testDir, 'does-not-exist.ts'), line: 1, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspReferencesTool.execute(
+        {
+          file_path: join(testDir, 'does-not-exist.ts'),
+          line: 1,
+          character: 1,
+          max_results: 50,
+        },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(false);
     expect(result.hint).toContain('Could not read file');
@@ -242,10 +255,12 @@ describe('lsp_references tool', () => {
   it('returns empty references when none found at position', async () => {
     const ctx = mockCtx(testDir);
     // Line 4 returns no references from mock server
-    const result = parseResult(await lspReferencesTool.execute(
-      { file_path: testFile, line: 4, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspReferencesTool.execute(
+        { file_path: testFile, line: 4, character: 1, max_results: 50 },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(true);
     expect(result.count).toBe(0);
@@ -256,10 +271,12 @@ describe('lsp_references tool', () => {
   it('converts 1-based line/character to 0-based for LSP', async () => {
     const ctx = mockCtx(testDir);
     // Pass 1-based: line=2, char=5 → LSP gets line=1, char=4
-    const result = parseResult(await lspReferencesTool.execute(
-      { file_path: testFile, line: 2, character: 5 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspReferencesTool.execute(
+        { file_path: testFile, line: 2, character: 5, max_results: 50 },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(true);
     // The position returned is the original 1-based
@@ -268,10 +285,12 @@ describe('lsp_references tool', () => {
 
   it('defaults character to 1 when not provided', async () => {
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspReferencesTool.execute(
-      { file_path: testFile, line: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspReferencesTool.execute(
+        { file_path: testFile, line: 1, character: 1, max_results: 50 },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(true);
     expect(result.position).toEqual({ line: 1, character: 1 });
@@ -291,10 +310,12 @@ describe('lsp_references tool', () => {
     writeFileSync(manyFile, 'content', 'utf-8');
 
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspReferencesTool.execute(
-      { file_path: manyFile, line: 1, character: 1, max_results: 10 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspReferencesTool.execute(
+        { file_path: manyFile, line: 1, character: 1, max_results: 10 },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(true);
     expect(result.truncated).toBe(true);
@@ -306,10 +327,12 @@ describe('lsp_references tool', () => {
   it('returns references with 1-based line/character in output', async () => {
     const ctx = mockCtx(testDir);
     // Line 1 returns 4 references with specific positions from mock server
-    const result = parseResult(await lspReferencesTool.execute(
-      { file_path: testFile, line: 1, character: 1 },
-      ctx
-    ));
+    const result = parseResult(
+      await lspReferencesTool.execute(
+        { file_path: testFile, line: 1, character: 1, max_results: 50 },
+        ctx
+      )
+    );
 
     expect(result.available).toBe(true);
     const refs = result.references as Array<{ line: number; character: number }>;

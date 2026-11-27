@@ -237,9 +237,11 @@ describe('LspClient — Request/Response Matching', () => {
     await client.shutdown();
   });
 
-  it('handles timeout gracefully', { timeout: 15000 }, async () => {
-    // Create a server that never responds to hover
-    const slowServerScript = `
+  it(
+    'handles timeout gracefully',
+    async () => {
+      // Create a server that never responds to hover
+      const slowServerScript = `
       const { stdin, stdout } = process;
       let buffer = '';
       stdin.setEncoding('utf-8');
@@ -265,19 +267,21 @@ describe('LspClient — Request/Response Matching', () => {
       });
     `;
 
-    const client = new LspClient();
-    client.spawn(['bun', '-e', slowServerScript]);
-    await client.initialize('file:///test-timeout');
+      const client = new LspClient();
+      client.spawn(['bun', '-e', slowServerScript]);
+      await client.initialize('file:///test-timeout');
 
-    // This should timeout (100ms) and return null
-    const result = await client.hover('file:///test-timeout.ts', 1, 1, 100);
-    expect(result).toBeNull();
+      // This should timeout (100ms) and return null
+      const result = await client.hover('file:///test-timeout.ts', 1, 1, 100);
+      expect(result).toBeNull();
 
-    // A request timeout rejects the pending promise; the server process stays
-    // alive until shutdown() is called explicitly.
+      // A request timeout rejects the pending promise; the server process stays
+      // alive until shutdown() is called explicitly.
 
-    await client.shutdown();
-  });
+      await client.shutdown();
+    },
+    { timeout: 15000 }
+  );
 });
 
 describe('LspClient — Shutdown', () => {

@@ -114,7 +114,10 @@ describe('module registry — disable option', () => {
 
   it('warns instead of throwing for an unknown tool', async () => {
     const { warnings, logger } = captureLogger();
-    const tools = await buildToolMap({ modules: ['core'], disable: ['does_not_exist'] }, { logger });
+    const tools = await buildToolMap(
+      { modules: ['core'], disable: ['does_not_exist'] },
+      { logger }
+    );
 
     expect(Object.keys(tools)).toHaveLength(9);
     expect(warnings.some((warning) => warning.includes('does_not_exist'))).toBe(true);
@@ -140,9 +143,7 @@ describe('module registry — invalid options', () => {
     expect(names).toHaveLength(9);
     expect(names).not.toContain('sonar_search');
     expect(names).not.toContain('lsp_references');
-    expect(
-      warnings.some((warning) => warning.includes('Invalid "modules" option'))
-    ).toBe(true);
+    expect(warnings.some((warning) => warning.includes('Invalid "modules" option'))).toBe(true);
   });
 
   it('fails closed to core for a mixed non-string array', async () => {
@@ -150,8 +151,6 @@ describe('module registry — invalid options', () => {
     const tools = await buildToolMap({ modules: ['core', 5] }, { logger });
 
     expect(Object.keys(tools)).toHaveLength(9);
-    expect(
-      warnings.some((warning) => warning.includes('Invalid "modules" option'))
-    ).toBe(true);
+    expect(warnings.some((warning) => warning.includes('Invalid "modules" option'))).toBe(true);
   });
 });

@@ -140,9 +140,9 @@ describe('LSP project root resolution', () => {
   it('falls back to package.json', () => {
     write('project/package.json', '{}');
     const file = write('project/src/a.ts', '');
-    expect(
-      resolveProjectRoot(file, { rootMarkers: ['tsconfig.json', 'package.json'] })
-    ).toBe(canonicalRoot(join(dir, 'project')));
+    expect(resolveProjectRoot(file, { rootMarkers: ['tsconfig.json', 'package.json'] })).toBe(
+      canonicalRoot(join(dir, 'project'))
+    );
   });
 
   it('prefers go.work over a nested go.mod', () => {

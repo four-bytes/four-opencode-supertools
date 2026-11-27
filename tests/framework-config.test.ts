@@ -26,9 +26,9 @@ describe('loadSupertoolsConfig', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.config).toEqual({
-    twig: { tags: {} },
-    lsp: { idleTimeoutMs: null, servers: [] },
-  });
+        twig: { tags: {} },
+        lsp: { idleTimeoutMs: null, servers: [] },
+      });
       expect(result.path).toBeNull();
     }
   });

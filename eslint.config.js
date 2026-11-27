@@ -5,7 +5,7 @@ import eslintPluginPrettier from 'eslint-plugin-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules', '*.config.js'],
+    ignores: ['dist', 'node_modules', '*.config.js', 'tests/fixtures'],
   },
   {
     files: ['**/*.ts'],
@@ -33,6 +33,8 @@ export default tseslint.config(
         RequestInit: 'readonly',
         Timer: 'readonly',
         Uint8Array: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
       },
     },
     plugins: {
