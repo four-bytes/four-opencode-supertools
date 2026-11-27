@@ -19,8 +19,8 @@ authoritative tool stack in [AGENTS.md](AGENTS.md).
 | ----------------- | ------------- | ---------------------------------------------------- |
 | **`batch_edit`**  | ~80%          | Search and replace across multiple files in one call |
 | **`append_file`** | ~95%          | Append or prepend text to a file                     |
-| **`lint_file`**   | ~60%          | Run linter on a specific file, return errors only    |
-| **`run_tests`**   | ~50%          | Run a specific test file, return failures only       |
+| **`lint_file`**   | ~60%          | Run linter (ESLint/tsc/Deno/PHP/Go/Rust) on a file, errors only |
+| **`run_tests`**   | ~50%          | Run a test file (Bun/Vitest/Jest/PHPUnit/Go/Cargo/Deno), failures only |
 
 ### Smart Editing (3)
 
@@ -92,22 +92,23 @@ Search and replace across multiple files matching a glob pattern.
 
 ### `lint_file`
 
-Run appropriate linter on a file and return only errors/warnings. For `.go` files golangci-lint (v2) lints the file's package from the nearest `go.mod`; `govet` and `staticcheck` are part of its standard set. For `.rs` files `cargo clippy --all-targets` lints the crate including tests, benches and examples from the nearest `Cargo.toml`; diagnostic paths are normalised against the Cargo workspace root and filtered to the exact file (no basename matching).
+Run appropriate linter on a file and return only errors/warnings. For `.go` files golangci-lint (v2) lints the file's package from the nearest `go.mod`; `govet` and `staticcheck` are part of its standard set. For `.rs` files `cargo clippy --all-targets` lints the crate including tests, benches and examples from the nearest `Cargo.toml`; diagnostic paths are normalised against the Cargo workspace root and filtered to the exact file (no basename matching). For `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs` files ESLint runs, or `deno lint --json` + `deno check` in a Deno project (`deno.json`/`deno.jsonc`); `typecheck: true` additionally runs `tsc --noEmit -p <nearest tsconfig>` and merges the file's diagnostics with the linter output (`linter: "tsc"` runs only the type-check).
 
 **Parameters:**
 
 - `file_path` (string) — File to lint
-- `linter` (string, optional) — `eslint`, `phpstan`, `pint`, `ruff`, `golangci`, `clippy`, or `auto`
+- `linter` (string, optional) — `eslint`, `phpstan`, `pint`, `ruff`, `golangci`, `clippy`, `tsc`, `deno`, or `auto`
+- `typecheck` (boolean, optional) — Run `tsc --noEmit` for TS/JS files in addition to the linter; ignored for Deno projects
 
 ### `run_tests`
 
-Run tests for a specific file and return only failures. In a Go module (`go.mod` in the project directory) it runs `go test` on the package of the given `_test.go` file. In a Cargo crate it runs `cargo test` for `.rs` / `tests/*.rs` files.
+Run tests for a specific file and return only failures. In a Go module (`go.mod` in the project directory) it runs `go test` on the package of the given `_test.go` file. In a Cargo crate it runs `cargo test` for `.rs` / `tests/*.rs` files. In a Deno project (`deno.json`/`deno.jsonc`) it runs `deno test` before the Bun/package.json fallback.
 
 **Parameters:**
 
 - `test_file` (string) — Test file to run
 - `filter` (string, optional) — Test name pattern
-- `framework` (string, optional) — `bun`, `phpunit`, `jest`, `vitest`, `go`, `cargo`, or `auto`
+- `framework` (string, optional) — `bun`, `phpunit`, `jest`, `vitest`, `go`, `cargo`, `deno`, or `auto`
 
 ### `sonar_search`
 
@@ -267,6 +268,7 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `core`     | 9 file-editing and meta tools                 | always on                              |
 | `search`   | `sonar_search`                                | always on in auto mode                 |
 | `lsp`      | `file_outline`, `lsp_hover`, `lsp_references` | always on in auto mode                 |
+| `typescript` | (tsc/Deno support lives in `lint_file`/`run_tests`) | `tsconfig.json`, `package.json`, `deno.json(c)` |
 | `php`      | `extract_method`, `rename_symbol`, `move_class` | `composer.json`                      |
 | `go`       | (refactoring tools land in a later issue)     | `go.mod`                               |
 | `rust`     | (refactoring tools land in a later issue)     | `Cargo.toml`                           |
@@ -274,16 +276,16 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `doctrine` | (later issue)                                 | `doctrine/orm` in composer             |
 | `shopware` | (later issue)                                 | `shopware/core` in composer            |
 
-Auto mode always starts with `core`, `search` and `lsp`, then adds `php`, `go`,
-`rust`, `symfony`, `doctrine` and `shopware` when their marker is present in the
-project directory or worktree. For the framework markers, `composer.json` means
-the `require` or `require-dev` section names the package; a shopware project also
-counts as symfony and PHP.
+Auto mode always starts with `core`, `search` and `lsp`, then adds `typescript`,
+`php`, `go`, `rust`, `symfony`, `doctrine` and `shopware` when their marker is
+present in the project directory or worktree. For the framework markers,
+`composer.json` means the `require` or `require-dev` section names the package; a
+shopware project also counts as symfony and PHP.
 
-Dependencies are resolved transitively: `go` and `rust` require `lsp`, `symfony`
-requires `php`, `doctrine` and `shopware` require `symfony`. `core` is always
-included, whatever list you pass. `disable` removes individual tool names after
-the modules are merged.
+Dependencies are resolved transitively: `typescript`, `go` and `rust` require
+`lsp`, `symfony` requires `php`, `doctrine` and `shopware` require `symfony`.
+`core` is always included, whatever list you pass. `disable` removes individual
+tool names after the modules are merged.
 
 To filter tools for a single agent, use opencode's own `tools` config instead of
 `disable` — module selection is per project, agent filtering is per agent.

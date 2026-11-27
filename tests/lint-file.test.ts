@@ -5,10 +5,16 @@ import { tmpdir } from 'node:os';
 import {
   buildLintCommand,
   findCargoRoot,
+  findDenoRoot,
   findGoModuleRoot,
+  findTscBinary,
+  findTsconfigRoot,
   lintFileTool,
   parseClippyJson,
   parseCargoWorkspaceRoot,
+  parseDenoCheckOutput,
+  parseDenoLintJson,
+  parseTscOutput,
 } from '../src/tools/lint-file';
 
 function mockCtx(dir: string) {
@@ -278,4 +284,216 @@ describe('lint_file Rust workspace support', () => {
     expect(parsed.warningCount).toBe(0);
     expect(parsed.errors.join('\n')).not.toContain('other/foo.rs');
   });
+});
+
+describe('lint_file TypeScript/Deno support', () => {
+  const fixtureDir = new URL('./fixtures/typescript', import.meta.url).pathname;
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `supertools-lint-ts-${Date.now()}`);
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    try {
+      rmSync(testDir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it('builds the tsc command with a project root and type-check timeout', () => {
+    const file = join(testDir, 'src', 'lib.ts');
+    const { cmd, timeout } = buildLintCommand('tsc', file, testDir);
+
+    expect(cmd).toEqual(['bun', 'x', 'tsc', '--noEmit', '-p', testDir]);
+    expect(timeout).toBe(180000);
+  });
+
+  it('detects a local tsc binary for bun x', () => {
+    const bin = join(testDir, 'node_modules', '.bin', 'tsc');
+    mkdirSync(join(testDir, 'node_modules', '.bin'), { recursive: true });
+    writeFileSync(bin, '', 'utf-8');
+
+    expect(findTscBinary(testDir)).toBe(bin);
+  });
+
+  it('falls back to PATH when no local tsc exists', () => {
+    expect(findTscBinary(testDir, { which: () => '/usr/bin/tsc', exists: () => false })).toBe(
+      '/usr/bin/tsc'
+    );
+  });
+
+  it('reports tsc as unavailable when neither local nor PATH binary exists', () => {
+    expect(findTscBinary(testDir, { which: () => null, exists: () => false })).toBeNull();
+  });
+
+  it('builds the deno lint command', () => {
+    const file = join(testDir, 'src', 'lib.ts');
+    const { cmd, timeout } = buildLintCommand('deno', file);
+
+    expect(cmd).toEqual(['deno', 'lint', '--json', file]);
+    expect(timeout).toBe(30000);
+  });
+
+  it('finds the tsconfig root above a file', () => {
+    writeFileSync(join(testDir, 'tsconfig.json'), '{}', 'utf-8');
+    expect(findTsconfigRoot(join(testDir, 'src', 'lib.ts'))).toBe(testDir);
+  });
+
+  it('finds a deno.jsonc root above a file', () => {
+    writeFileSync(join(testDir, 'deno.jsonc'), '{}', 'utf-8');
+    expect(findDenoRoot(join(testDir, 'src', 'lib.ts'))).toBe(testDir);
+  });
+
+  it('returns null without a marker', () => {
+    expect(findTsconfigRoot(join(testDir, 'src', 'lib.ts'))).toBeNull();
+    expect(findDenoRoot(join(testDir, 'src', 'lib.ts'))).toBeNull();
+  });
+
+  it('parses and filters tsc diagnostics to the target file', () => {
+    const output = readFileSync(join(fixtureDir, 'tsc-output.txt'), 'utf-8');
+    const target = join(fixtureDir, 'src', 'lib.ts');
+    const parsed = parseTscOutput(output, target, fixtureDir);
+
+    expect(parsed.errorCount).toBe(2);
+    expect(parsed.warningCount).toBe(0);
+    expect(parsed.errors[0]).toContain('src/lib.ts:3:9 error:');
+    expect(parsed.errors[0]).toContain('[TS2322]');
+    expect(parsed.errors.join('\n')).not.toContain('other.ts');
+  });
+
+  it('parses deno lint JSON for the target file only', () => {
+    const output = readFileSync(join(fixtureDir, 'deno-lint.json'), 'utf-8');
+    const target = '/tmp/supertools-deno/src/lib.ts';
+    const parsed = parseDenoLintJson(output, target);
+
+    expect(parsed.errorCount).toBe(1);
+    expect(parsed.warningCount).toBe(0);
+    expect(parsed.errors[0]).toContain(':3:10 error:');
+    expect(parsed.errors[0]).toContain('`value` is never used');
+    expect(parsed.errors[0]).toContain('[no-unused-vars]');
+    expect(parsed.errors.join('\n')).not.toContain('other.ts');
+  });
+
+  it('ignores malformed deno lint JSON', () => {
+    expect(parseDenoLintJson('not json', '/tmp/x.ts')).toEqual({
+      errors: [],
+      warnings: [],
+      errorCount: 0,
+      warningCount: 0,
+    });
+  });
+
+  it('parses deno check blocks for the target file only', () => {
+    const output = readFileSync(join(fixtureDir, 'deno-check.txt'), 'utf-8');
+    const target = '/tmp/supertools-deno/src/lib.ts';
+    const parsed = parseDenoCheckOutput(output, target, '/tmp/supertools-deno');
+
+    expect(parsed.errorCount).toBe(1);
+    expect(parsed.warningCount).toBe(1);
+    expect(parsed.errors[0]).toContain(':5:9 error:');
+    expect(parsed.errors[0]).toContain('[TS2345]');
+    expect(parsed.warnings[0]).toContain(':8:7 warning:');
+    expect(parsed.warnings[0]).toContain('[TS6133]');
+    expect([...parsed.errors, ...parsed.warnings].join('\n')).not.toContain('other.ts');
+  });
+
+  it('strips ANSI colour codes from deno check output', () => {
+    const output =
+      '\x1b[1mTS2322 \x1b[0m[ERROR]: bad assignment\n' +
+      '    at \x1b[36mfile:///tmp/supertools-deno/src/lib.ts\x1b[0m:\x1b[33m2\x1b[0m:\x1b[33m7\x1b[0m\n';
+    const parsed = parseDenoCheckOutput(
+      output,
+      '/tmp/supertools-deno/src/lib.ts',
+      '/tmp/supertools-deno'
+    );
+
+    expect(parsed.errorCount).toBe(1);
+    expect(parsed.errors[0]).toContain(':2:7 error: bad assignment [TS2322]');
+  });
+
+  it('resolves relative deno check paths against the deno root', () => {
+    const root = '/tmp/supertools-deno';
+    const output = 'TS2345 [ERROR]: bad argument\n    at src/lib.ts:5:9\n';
+    const parsed = parseDenoCheckOutput(output, join(root, 'src', 'lib.ts'), root);
+
+    expect(parsed.errorCount).toBe(1);
+    expect(parsed.errors[0]).toContain('lib.ts:5:9 error: bad argument [TS2345]');
+  });
+
+  it('parses deno check blocks with an error: prefix', () => {
+    const output =
+      'error: TS2322 [ERROR]: bad assignment\n' +
+      '    at file:///tmp/supertools-deno/src/lib.ts:2:7\n';
+    const parsed = parseDenoCheckOutput(
+      output,
+      '/tmp/supertools-deno/src/lib.ts',
+      '/tmp/supertools-deno'
+    );
+
+    expect(parsed.errorCount).toBe(1);
+    expect(parsed.errors[0]).toContain(':2:7 error: bad assignment [TS2322]');
+  });
+
+  it('skips tsc for a Deno project even with typecheck and explicit eslint', async () => {
+    writeFileSync(join(testDir, 'deno.json'), '{}', 'utf-8');
+    writeFileSync(
+      join(testDir, 'tsconfig.json'),
+      JSON.stringify({ compilerOptions: { strict: true, noEmit: true } }),
+      'utf-8'
+    );
+    const file = join(testDir, 'bad.ts');
+    writeFileSync(file, "const x: number = 'nope';\nexport { x };\n", 'utf-8');
+
+    const result = await lintFileTool.execute(
+      { file_path: file, linter: 'eslint', typecheck: true },
+      mockCtx(testDir)
+    );
+
+    expect(result).not.toContain('TS2322');
+  }, 60_000);
+
+  it.skipIf(!Bun.which('tsc'))(
+    'type-checks a file with tsc',
+    async () => {
+      writeFileSync(
+        join(testDir, 'tsconfig.json'),
+        JSON.stringify({ compilerOptions: { strict: true, noEmit: true } }),
+        'utf-8'
+      );
+      const file = join(testDir, 'bad.ts');
+      writeFileSync(file, "const x: number = 'nope';\nexport { x };\n", 'utf-8');
+
+      const result = await lintFileTool.execute(
+        { file_path: file, linter: 'tsc' },
+        mockCtx(testDir)
+      );
+
+      expect(result).toContain('error');
+      expect(result).toContain('TS2322');
+    },
+    120_000
+  );
+
+  it.skipIf(!Bun.which('deno'))(
+    'runs deno lint and check for a Deno project',
+    async () => {
+      writeFileSync(join(testDir, 'deno.json'), '{}', 'utf-8');
+      const file = join(testDir, 'lib.ts');
+      writeFileSync(
+        file,
+        "const unused = 1;\nconst value: number = 'nope';\nexport { value };\n",
+        'utf-8'
+      );
+
+      const result = await lintFileTool.execute({ file_path: file }, mockCtx(testDir));
+
+      expect(typeof result).toBe('string');
+      expect(result).toContain('no-unused-vars');
+      expect(result).toContain('TS2322');
+    },
+    120_000
+  );
 });

@@ -1,0 +1,12 @@
+TS2345 [ERROR]: Argument of type 'string' is not assignable to parameter of type 'number'.
+  return value.toFixed(2);
+  ~~~~~~~
+    at file:///tmp/supertools-deno/src/lib.ts:5:9
+
+TS6133 [WARNING]: 'unused' is declared but its value is never read.
+    at file:///tmp/supertools-deno/src/lib.ts:8:7
+
+TS2304 [ERROR]: Cannot find name 'nope'.
+  nope();
+  ~~~~
+    at file:///tmp/supertools-deno/src/other.ts:1:1

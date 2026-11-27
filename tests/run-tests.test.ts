@@ -6,6 +6,7 @@ import {
   buildTestCommand,
   detectFramework,
   parseCargoTestOutput,
+  parseDenoTestOutput,
   parseGoTestOutput,
   runTestsTool,
 } from '../src/tools/run-tests';
@@ -321,4 +322,63 @@ describe('run_tests Rust support', () => {
     },
     180_000
   );
+});
+
+describe('run_tests Deno support', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `supertools-test-deno-${Date.now()}`);
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    try {
+      rmSync(testDir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it('prefers deno over bun when deno.json and package.json coexist', () => {
+    writeFileSync(join(testDir, 'deno.json'), '{}', 'utf-8');
+    writeFileSync(join(testDir, 'package.json'), '{}', 'utf-8');
+    expect(detectFramework(testDir, join(testDir, 'calc_test.ts'))).toBe('deno');
+    expect(detectFramework(testDir)).toBe('deno');
+  });
+
+  it('builds deno test with a filter', () => {
+    const file = join(testDir, 'calc_test.ts');
+    const { cmd, timeout } = buildTestCommand('deno', file, 'add', testDir);
+
+    expect(cmd).toEqual(['deno', 'test', '--filter', 'add', file]);
+    expect(timeout).toBe(180000);
+  });
+
+  it('builds deno test without a filter', () => {
+    const file = join(testDir, 'calc_test.ts');
+    expect(buildTestCommand('deno', file).cmd).toEqual(['deno', 'test', file]);
+  });
+
+  it('parses a failing deno test run without passing tests', () => {
+    const output = readFileSync(
+      new URL('./fixtures/typescript/deno-test-fail.txt', import.meta.url).pathname,
+      'utf-8'
+    );
+    const result = parseDenoTestOutput(output, 1);
+
+    expect(result).toContain('FAILED');
+    expect(result).toContain('add');
+    expect(result).toContain('AssertionError');
+    expect(result).toContain('test result: FAILED. 1 passed; 1 failed');
+    expect(result).not.toContain('sub ... ok');
+  });
+
+  it('parses a passing deno test run', () => {
+    const result = parseDenoTestOutput(
+      'test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out (1ms)\n',
+      0
+    );
+    expect(result).toStartWith('✅');
+  });
 });

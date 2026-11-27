@@ -10,6 +10,7 @@ describe('detectMarkers', () => {
       php: true,
       go: false,
       rust: false,
+      typescript: false,
       symfony: true,
       doctrine: false,
       shopware: false,
@@ -22,6 +23,7 @@ describe('detectMarkers', () => {
       php: true,
       go: false,
       rust: false,
+      typescript: false,
       symfony: true,
       doctrine: false,
       shopware: true,
@@ -34,6 +36,7 @@ describe('detectMarkers', () => {
       php: true,
       go: false,
       rust: false,
+      typescript: false,
       symfony: false,
       doctrine: true,
       shopware: false,
@@ -46,6 +49,7 @@ describe('detectMarkers', () => {
       php: false,
       go: false,
       rust: false,
+      typescript: false,
       symfony: false,
       doctrine: false,
       shopware: false,
@@ -55,6 +59,10 @@ describe('detectMarkers', () => {
   it('detects go and rust marker files', () => {
     expect(detectMarkers({ directory: fixture('go') }).go).toBe(true);
     expect(detectMarkers({ directory: fixture('rust') }).rust).toBe(true);
+  });
+
+  it('detects a typescript marker file', () => {
+    expect(detectMarkers({ directory: fixture('typescript') }).typescript).toBe(true);
   });
 
   it('deduplicates directory and worktree', () => {
@@ -81,5 +89,9 @@ describe('detectModules', () => {
 
   it('returns an empty list for an empty directory', () => {
     expect(detectModules({ directory: fixture('frameworks/empty') })).toEqual([]);
+  });
+
+  it('returns the typescript module for a tsconfig project', () => {
+    expect(detectModules({ directory: fixture('typescript') })).toEqual(['typescript']);
   });
 });

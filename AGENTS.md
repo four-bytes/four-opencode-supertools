@@ -3,19 +3,19 @@
 ## Pointer
 - Meta-repo: `~/four-opencode-plugins/`
 - Repo: `four-bytes/four-opencode-supertools`
-- Package: `@four-bytes/four-opencode-supertools` v0.6.2
+- Package: `@four-bytes/four-opencode-supertools` v0.7.0
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Typecheck: `bun run typecheck` (`tsc --noEmit`, checks `src/` **and** `tests/`)
 - Lint: `bun run lint` (`eslint src/ tests/`)
 - Test: `bun test`
 
 ## Tool Stack (18 tools, grouped into modules)
-Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `go`, `rust`, `symfony`; `doctrine` and `shopware` are reserved for later issues. See `src/lib/modules/` and `src/modules/`.
+Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`; `doctrine` and `shopware` are reserved for later issues. See `src/lib/modules/` and `src/modules/`.
 
 ### File Editing (4 tools)
 - `batch_edit` — grep→replace across N files. Saves ~80% tokens vs. grep→read→edit×N
-- `lint_file` — run linter, return errors+warnings. Auto-detects eslint/phpstan/ruff/golangci-lint (Go: package of the file) / cargo clippy (Rust: crate of the file). Saves ~60% tokens
-- `run_tests` — run test file, return failures only. Auto-detects bun/phpunit/jest/vitest/go test/cargo test. Saves ~50% tokens
+- `lint_file` — run linter, return errors+warnings. Auto-detects eslint/tsc (`typecheck: true`) / deno lint+check / phpstan/ruff/golangci-lint (Go: package of the file) / cargo clippy (Rust: crate of the file). Saves ~60% tokens
+- `run_tests` — run test file, return failures only. Auto-detects bun/phpunit/jest/vitest/go test/cargo test/deno test. Saves ~50% tokens
 - `append_file` — append/prepend text to file. Saves ~95% tokens vs. patch for simple additions
 
 ### Smart Editing (3 tools)
@@ -52,7 +52,7 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
 - Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 304 tests, bun-native
+- Tests: `tests/` — 330 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

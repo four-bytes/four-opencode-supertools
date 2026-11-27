@@ -1,0 +1,16 @@
+running 2 tests from ./calc_test.ts
+test sub ... ok (0ms)
+test add ... FAILED (0ms)
+
+ ERRORS 
+
+add => ./calc_test.ts:4:3
+error: AssertionError: Values are not equal.
+    at assert (https://deno.land/std@0.224.0/assert/assert_equals.ts:32:3)
+    at file:///tmp/supertools-deno/calc_test.ts:4:3
+
+ FAILURES 
+
+add => ./calc_test.ts:4:3
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out (2ms)

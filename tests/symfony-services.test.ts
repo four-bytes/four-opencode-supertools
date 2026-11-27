@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   lookupSymfonyServices,
   normalizeRuntimeContainer,
+  type ServiceLookupResult,
 } from '../src/lib/framework/symfony-services';
 import { symfonyServiceTool } from '../src/tools/symfony-service';
 
@@ -48,7 +49,7 @@ function mockCtx(dir: string) {
   };
 }
 
-function parseOutput(result: unknown): Record<string, any> {
+function parseOutput(result: unknown): ServiceLookupResult {
   return JSON.parse((result as { output: string }).output);
 }
 

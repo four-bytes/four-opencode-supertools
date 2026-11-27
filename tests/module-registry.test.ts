@@ -46,6 +46,17 @@ describe('module registry — auto detection', () => {
     expect(names).not.toContain('rename_symbol');
     expect(names).not.toContain('move_class');
   });
+
+  it('enables the typescript module for a tsconfig project', async () => {
+    const { warnings, logger } = captureLogger();
+    const tools = await buildToolMap(undefined, { directory: fixture('typescript'), logger });
+    const names = Object.keys(tools);
+
+    expect(names).toContain('batch_edit');
+    expect(names).toContain('file_outline');
+    expect(names).not.toContain('extract_method');
+    expect(warnings).toHaveLength(0);
+  });
 });
 
 describe('module registry — explicit selection', () => {

@@ -5,7 +5,16 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 export type ModuleId =
-  'core' | 'search' | 'lsp' | 'php' | 'go' | 'rust' | 'symfony' | 'doctrine' | 'shopware';
+  | 'core'
+  | 'search'
+  | 'lsp'
+  | 'typescript'
+  | 'php'
+  | 'go'
+  | 'rust'
+  | 'symfony'
+  | 'doctrine'
+  | 'shopware';
 
 export interface DetectionContext {
   directory?: string;
@@ -19,6 +28,7 @@ export interface ProjectMarkers {
   symfony: boolean;
   doctrine: boolean;
   shopware: boolean;
+  typescript: boolean;
 }
 
 export interface ComposerJson {
@@ -63,6 +73,13 @@ export function detectMarkers(ctx: DetectionContext): ProjectMarkers {
   const php = composers.some(({ root }) => existsSync(join(root, 'composer.json')));
   const go = roots.some((root) => existsSync(join(root, 'go.mod')));
   const rust = roots.some((root) => existsSync(join(root, 'Cargo.toml')));
+  const typescript = roots.some(
+    (root) =>
+      existsSync(join(root, 'tsconfig.json')) ||
+      existsSync(join(root, 'deno.json')) ||
+      existsSync(join(root, 'deno.jsonc')) ||
+      existsSync(join(root, 'package.json'))
+  );
 
   const hasDependency = (name: string): boolean =>
     composers.some(({ composer }) => (composer ? composerHasPackage(composer, name) : false));
@@ -78,6 +95,7 @@ export function detectMarkers(ctx: DetectionContext): ProjectMarkers {
     php: php || shopware || symfony || doctrine,
     go,
     rust,
+    typescript,
     symfony,
     doctrine,
     shopware,
@@ -86,6 +104,14 @@ export function detectMarkers(ctx: DetectionContext): ProjectMarkers {
 
 export function detectModules(ctx: DetectionContext): ModuleId[] {
   const markers = detectMarkers(ctx);
-  const order: (keyof ProjectMarkers)[] = ['php', 'go', 'rust', 'symfony', 'doctrine', 'shopware'];
+  const order: (keyof ProjectMarkers)[] = [
+    'typescript',
+    'php',
+    'go',
+    'rust',
+    'symfony',
+    'doctrine',
+    'shopware',
+  ];
   return order.filter((id) => markers[id]);
 }

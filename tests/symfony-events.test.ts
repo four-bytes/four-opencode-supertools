@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { lookupSymfonyEvents, normalizeRuntimeEvents } from '../src/lib/framework/symfony-events';
+import {
+  lookupSymfonyEvents,
+  normalizeRuntimeEvents,
+  type EventLookupResult,
+} from '../src/lib/framework/symfony-events';
 import { parseSubscribedEvents } from '../src/lib/framework/symfony-static';
 import { symfonyEventsTool } from '../src/tools/symfony-events';
 
@@ -45,7 +49,7 @@ function mockCtx(dir: string) {
   };
 }
 
-function parseOutput(result: unknown): Record<string, any> {
+function parseOutput(result: unknown): EventLookupResult {
   return JSON.parse((result as { output: string }).output);
 }
 
