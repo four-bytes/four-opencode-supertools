@@ -252,7 +252,9 @@ describe('lsp_hover tool', () => {
 
   it('defaults character to 1 when not provided', async () => {
     const ctx = mockCtx(testDir);
-    const result = parseResult(await lspHoverTool.execute({ file_path: testFile, line: 4 }, ctx));
+    const result = parseResult(
+      await lspHoverTool.execute({ file_path: testFile, line: 4, character: 1 }, ctx)
+    );
 
     expect(result.available).toBe(true);
     expect(result.position).toEqual({ line: 4, character: 1 });

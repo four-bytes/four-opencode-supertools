@@ -18,9 +18,11 @@ function containerData(): unknown {
 }
 
 function capture(
-  result:
-    | { exitCode: number; stdout: string; stderr: string }
-    | Error = { exitCode: 0, stdout: JSON.stringify(containerData()), stderr: '' }
+  result: { exitCode: number; stdout: string; stderr: string } | Error = {
+    exitCode: 0,
+    stdout: JSON.stringify(containerData()),
+    stderr: '',
+  }
 ) {
   const calls: { cmd: string[]; cwd?: string }[] = [];
   return {
@@ -188,7 +190,7 @@ describe('symfony_service tool', () => {
   it('returns a static result for the fixture project', async () => {
     const output = parseOutput(
       await symfonyServiceTool.execute(
-        { service: 'App\\Service\\Mailer', directory: appRoot },
+        { service: 'App\\Service\\Mailer', limit: 20, directory: appRoot },
         mockCtx(appRoot)
       )
     );
@@ -202,7 +204,7 @@ describe('symfony_service tool', () => {
   it('reports when no Symfony project is found', async () => {
     const output = parseOutput(
       await symfonyServiceTool.execute(
-        { service: 'x', directory: xmlRoot },
+        { service: 'x', limit: 20, directory: xmlRoot },
         mockCtx(xmlRoot)
       )
     );

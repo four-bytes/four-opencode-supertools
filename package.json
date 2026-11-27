@@ -1,6 +1,6 @@
 {
   "name": "@four-bytes/four-opencode-supertools",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Token-efficient supertools for opencode agents — patch_file via unified diff and more",
   "type": "module",
   "exports": {
@@ -25,7 +25,7 @@
     "postinstall": "bun run build",
     "build": "bun build ./src/four-opencode-supertools.ts --outdir dist --target bun --format esm --splitting && cp node_modules/web-tree-sitter/web-tree-sitter.wasm dist/ && cp node_modules/tree-sitter-php/tree-sitter-php.wasm dist/",
     "test": "bun test",
-    "lint": "eslint src/",
+    "lint": "eslint src/ tests/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

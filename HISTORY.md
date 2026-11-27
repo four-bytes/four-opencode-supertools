@@ -2,6 +2,12 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.6.2] - 2026-11-27
+
+### Changed
+- The `tsc` and ESLint gates now cover `tests/` as well as `src/`: `tsconfig.json` includes both trees (excluding `tests/fixtures`), and `bun run lint` runs `eslint src/ tests/` (#114).
+- Tests were narrowed to the real tool contracts (`ToolResult` object branch, required schema arguments) without changing assertions or expected values (#114).
+
 ## [0.6.1] - 2026-11-27
 
 ### Fixed

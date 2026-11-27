@@ -6,6 +6,7 @@ import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { smartPatchTool } from '../src/tools/smart-patch';
+import { toolObject } from './helpers';
 
 function mockCtx() {
   return {
@@ -38,12 +39,14 @@ describe('smart_patch tool', () => {
 
   it('applies simple patch with context', async () => {
     const patch = '@@ -1,5 +1,5 @@\n line 1\n-line 2\n+line two\n line 3\n line 4\n line 5';
-    const result = await smartPatchTool.execute(
-      {
-        file_path: testFile,
-        patch,
-      },
-      mockCtx()
+    const result = toolObject(
+      await smartPatchTool.execute(
+        {
+          file_path: testFile,
+          patch,
+        },
+        mockCtx()
+      )
     );
 
     expect(result.metadata.applied).toBe(true);
@@ -58,12 +61,14 @@ describe('smart_patch tool', () => {
   it('applies patch even with wrong line numbers (context anchored)', async () => {
     // Line numbers say @@ -10,5 but we match by context
     const patch = '@@ -10,5 +10,5 @@\n line 2\n-line 3\n+line three\n line 4';
-    const result = await smartPatchTool.execute(
-      {
-        file_path: testFile,
-        patch,
-      },
-      mockCtx()
+    const result = toolObject(
+      await smartPatchTool.execute(
+        {
+          file_path: testFile,
+          patch,
+        },
+        mockCtx()
+      )
     );
 
     expect(result.metadata.applied).toBe(true);

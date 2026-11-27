@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { sonarSearchTool } from '../src/tools/sonar-search';
+import { toolObject } from './helpers';
 
 type MockResponse = {
   ok: boolean;
@@ -37,7 +38,9 @@ describe('sonar_search tool', () => {
       }),
     });
 
-    const result = await sonarSearchTool.execute({ query: 'meaning of life' }, {} as never);
+    const result = toolObject(
+      await sonarSearchTool.execute({ query: 'meaning of life' }, {} as never)
+    );
 
     expect(result.metadata.answer).toBe('The answer is 42.');
     expect(result.metadata.citations).toEqual(['https://example.com/a', 'https://example.com/b']);
@@ -54,9 +57,8 @@ describe('sonar_search tool', () => {
       json: async () => ({ choices: [{ message: { content: 'deep' } }], citations: [] }),
     });
 
-    const result = await sonarSearchTool.execute(
-      { query: 'deep research', model: 'sonar-pro' },
-      {} as never
+    const result = toolObject(
+      await sonarSearchTool.execute({ query: 'deep research', model: 'sonar-pro' }, {} as never)
     );
 
     expect(result.metadata.model).toBe('sonar-pro');
@@ -91,7 +93,7 @@ describe('sonar_search tool', () => {
       }),
     });
 
-    const result = await sonarSearchTool.execute({ query: 'leak test' }, {} as never);
+    const result = toolObject(await sonarSearchTool.execute({ query: 'leak test' }, {} as never));
 
     expect(JSON.stringify(result)).not.toContain('super-secret-key-xyz');
   });

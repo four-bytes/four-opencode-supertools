@@ -6,6 +6,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { solutionConfidenceTool } from '../src/tools/solution-confidence';
+import { toolObject } from './helpers';
 
 function mockCtx(dir: string) {
   return {
@@ -45,9 +46,11 @@ describe('solution_confidence tool', () => {
       'utf-8'
     );
 
-    const result = await solutionConfidenceTool.execute(
-      { description: 'fixed login bug in auth controller' },
-      ctx
+    const result = toolObject(
+      await solutionConfidenceTool.execute(
+        { description: 'fixed login bug in auth controller' },
+        ctx
+      )
     );
 
     expect(result.metadata).toHaveProperty('confidence');
@@ -72,7 +75,9 @@ describe('solution_confidence tool', () => {
       'utf-8'
     );
 
-    const result = await solutionConfidenceTool.execute({ description: 'random change' }, ctx);
+    const result = toolObject(
+      await solutionConfidenceTool.execute({ description: 'random change' }, ctx)
+    );
 
     expect(result.metadata.checks.tests).toBe(false);
     expect(result.metadata.verdict).toBe('band_aid');

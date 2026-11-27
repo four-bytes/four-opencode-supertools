@@ -10,9 +10,10 @@ import {
 const fixture = (path: string) => new URL(`./fixtures/${path}`, import.meta.url).pathname;
 const consolePath = fixture('frameworks/symfony/bin/console');
 
-function capture(
-  result: { exitCode: number; stdout: string; stderr: string } | Error
-): { runner: ConsoleRunner; calls: { cmd: string[]; opts: ConsoleRunOptions }[] } {
+function capture(result: { exitCode: number; stdout: string; stderr: string } | Error): {
+  runner: ConsoleRunner;
+  calls: { cmd: string[]; opts: ConsoleRunOptions }[];
+} {
   const calls: { cmd: string[]; opts: ConsoleRunOptions }[] = [];
   const runner: ConsoleRunner = async (cmd, opts) => {
     calls.push({ cmd, opts });
@@ -86,9 +87,7 @@ describe('runConsole', () => {
   });
 
   it('maps an EACCES error to console-unavailable', async () => {
-    const { runner } = capture(
-      Object.assign(new Error('permission denied'), { code: 'EACCES' })
-    );
+    const { runner } = capture(Object.assign(new Error('permission denied'), { code: 'EACCES' }));
 
     const result = await runConsole(consolePath, ['debug:foo'], { runner });
 

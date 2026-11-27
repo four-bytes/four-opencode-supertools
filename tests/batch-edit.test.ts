@@ -75,7 +75,7 @@ describe('batch_edit tool', () => {
   it('handles regex with capture groups', async () => {
     writeFileSync(join(testDir, 'test.ts'), 'const x = oldName;\n', 'utf-8');
 
-    const result = await batchEditTool.execute(
+    await batchEditTool.execute(
       {
         search: 'old(\\w+)',
         replace: 'new$1',

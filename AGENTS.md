@@ -3,8 +3,10 @@
 ## Pointer
 - Meta-repo: `~/four-opencode-plugins/`
 - Repo: `four-bytes/four-opencode-supertools`
-- Package: `@four-bytes/four-opencode-supertools` v0.6.0
+- Package: `@four-bytes/four-opencode-supertools` v0.6.2
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
+- Typecheck: `bun run typecheck` (`tsc --noEmit`, checks `src/` **and** `tests/`)
+- Lint: `bun run lint` (`eslint src/ tests/`)
 - Test: `bun test`
 
 ## Tool Stack (18 tools, grouped into modules)
@@ -50,7 +52,7 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
 - Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 301 tests, bun-native
+- Tests: `tests/` — 304 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

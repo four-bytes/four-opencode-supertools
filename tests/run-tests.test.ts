@@ -9,6 +9,7 @@ import {
   parseGoTestOutput,
   runTestsTool,
 } from '../src/tools/run-tests';
+import { toolString } from './helpers';
 
 function mockCtx(dir: string) {
   return {
@@ -78,7 +79,7 @@ describe('simple', () => {
 
     // Should contain pass indication — either JUnit XML or text output
     expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
+    expect(toolString(result).length).toBeGreaterThan(0);
   });
 
   it('runs tests via a directory override into a foreign repo', async () => {
@@ -99,7 +100,7 @@ describe('simple', () => {
       );
 
       expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
+      expect(toolString(result).length).toBeGreaterThan(0);
     } finally {
       try {
         rmSync(foreignDir, { recursive: true });
@@ -294,10 +295,7 @@ describe('run_tests Rust support', () => {
   });
 
   it('parses a passing cargo test run', () => {
-    const result = parseCargoTestOutput(
-      'test result: ok. 3 passed; 0 failed; 0 ignored\n',
-      0
-    );
+    const result = parseCargoTestOutput('test result: ok. 3 passed; 0 failed; 0 ignored\n', 0);
     expect(result).toStartWith('✅');
   });
 

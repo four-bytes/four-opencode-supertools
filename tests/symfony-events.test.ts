@@ -15,9 +15,11 @@ function eventsData(): unknown {
 }
 
 function capture(
-  result:
-    | { exitCode: number; stdout: string; stderr: string }
-    | Error = { exitCode: 0, stdout: JSON.stringify(eventsData()), stderr: '' }
+  result: { exitCode: number; stdout: string; stderr: string } | Error = {
+    exitCode: 0,
+    stdout: JSON.stringify(eventsData()),
+    stderr: '',
+  }
 ) {
   const calls: string[][] = [];
   return {
@@ -73,7 +75,7 @@ describe('lookupSymfonyEvents — runtime', () => {
       consolePath,
       runner,
     });
-    expect(result.select).toBeUndefined();
+    expect((result as { select?: unknown }).select).toBeUndefined();
     expect(result.listeners).toHaveLength(1);
     expect(result.listeners[0].method).toBe('onCreatedHigh');
     expect(result.listeners[0].priority).toBe(20);
@@ -127,10 +129,7 @@ describe('lookupSymfonyEvents — static fallback', () => {
 
 describe('parseSubscribedEvents', () => {
   it('extracts flat and nested priority forms', async () => {
-    const source = readFileSync(
-      fixtureRoot('app/src/EventListener/OrderSubscriber.php'),
-      'utf8'
-    );
+    const source = readFileSync(fixtureRoot('app/src/EventListener/OrderSubscriber.php'), 'utf8');
     const listeners = await parseSubscribedEvents(source);
 
     expect(listeners).toHaveLength(3);
@@ -156,7 +155,7 @@ describe('symfony_events tool', () => {
   it('returns a static listener list for the fixture project', async () => {
     const output = parseOutput(
       await symfonyEventsTool.execute(
-        { event: 'order.created', directory: appRoot },
+        { event: 'order.created', limit: 50, directory: appRoot },
         mockCtx(appRoot)
       )
     );
