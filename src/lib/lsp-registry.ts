@@ -442,3 +442,11 @@ export function getLspRegistry(
 export function resetLspRegistry(): void {
   registryInstance = null;
 }
+
+/**
+ * Return the current singleton instance, or null if it was never created.
+ * Never constructs a registry as a side effect.
+ */
+export function peekLspRegistry(): LspRegistry | null {
+  return registryInstance;
+}
