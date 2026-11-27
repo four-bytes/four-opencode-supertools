@@ -1,8 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { buildLintCommand, findGoModuleRoot, lintFileTool } from '../src/tools/lint-file';
+import {
+  buildLintCommand,
+  findCargoRoot,
+  findGoModuleRoot,
+  lintFileTool,
+  parseClippyJson,
+} from '../src/tools/lint-file';
 
 function mockCtx(dir: string) {
   return {
@@ -151,6 +157,79 @@ describe('lint_file Go support', () => {
       );
       const result = await lintFileTool.execute({ file_path: file }, ctx);
       expect(result).toContain('No lint errors');
+    },
+    120_000
+  );
+});
+
+describe('lint_file Rust support', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `supertools-lint-rust-${Date.now()}`);
+    mkdirSync(join(testDir, 'src'), { recursive: true });
+    writeFileSync(
+      join(testDir, 'Cargo.toml'),
+      '[package]\nname = "fixture"\nversion = "0.1.0"\nedition = "2021"\n',
+      'utf-8'
+    );
+  });
+
+  afterEach(() => {
+    try {
+      rmSync(testDir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it('finds the cargo root above a file', () => {
+    const file = join(testDir, 'src', 'lib.rs');
+    expect(findCargoRoot(file)).toBe(testDir);
+  });
+
+  it('returns null without Cargo.toml', () => {
+    expect(findCargoRoot(join(tmpdir(), 'no-crate-here', 'x.rs'))).toBeNull();
+  });
+
+  it('builds the clippy command', () => {
+    const { cmd } = buildLintCommand('clippy', join(testDir, 'src', 'lib.rs'), testDir);
+    expect(cmd).toEqual(['cargo', 'clippy', '--message-format=json']);
+  });
+
+  it('parses and filters clippy diagnostics to the target file', () => {
+    const fixtureDir = new URL('./fixtures/rust', import.meta.url).pathname;
+    const output = readFileSync(
+      new URL('./fixtures/rust/clippy.jsonl', import.meta.url).pathname,
+      'utf-8'
+    );
+    const target = join(fixtureDir, 'src', 'lib.rs');
+    const parsed = parseClippyJson(output, target, fixtureDir);
+
+    expect(parsed.errorCount).toBe(0);
+    expect(parsed.warningCount).toBe(1);
+    expect(parsed.errors).toHaveLength(0);
+    expect(parsed.warnings).toHaveLength(1);
+    expect(parsed.warnings[0]).toContain('src/lib.rs:3:9 warning:');
+    expect(parsed.warnings.join('\n')).not.toContain('nested/lib.rs');
+  });
+
+  it('reports a missing Cargo.toml', async () => {
+    const dir = join(tmpdir(), `supertools-lint-rust-nomod-${Date.now()}`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'x.rs'), 'pub fn f() {}\n', 'utf-8');
+    const result = await lintFileTool.execute({ file_path: join(dir, 'x.rs') }, mockCtx(dir));
+    rmSync(dir, { recursive: true });
+    expect(result).toContain('No Cargo.toml');
+  });
+
+  it.skipIf(!Bun.which('cargo'))(
+    'reports a clippy warning',
+    async () => {
+      const file = join(testDir, 'src', 'lib.rs');
+      writeFileSync(file, 'pub fn f() -> i32 {\n    let unused = 1;\n    0\n}\n', 'utf-8');
+      const result = await lintFileTool.execute({ file_path: file }, mockCtx(testDir));
+      expect(result).toContain('unused');
     },
     120_000
   );

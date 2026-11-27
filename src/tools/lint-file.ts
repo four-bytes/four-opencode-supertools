@@ -3,14 +3,15 @@
 
 import { tool } from '@opencode-ai/plugin';
 import { existsSync } from 'node:fs';
-import { extname, resolve } from 'node:path';
+import { extname, relative, resolve, sep } from 'node:path';
 import { $ } from 'bun';
 import { logDebugEvent } from '../lib/debug-logger';
 import { findGoModuleRoot, goPackageTarget } from '../lib/go-module';
+import { findCargoRoot } from '../lib/rust-module';
 
-export { findGoModuleRoot };
+export { findGoModuleRoot, findCargoRoot };
 
-type LinterType = 'eslint' | 'phpstan' | 'pint' | 'ruff' | 'golangci' | 'auto';
+type LinterType = 'eslint' | 'phpstan' | 'pint' | 'ruff' | 'golangci' | 'clippy' | 'auto';
 
 function detectLinter(filePath: string): LinterType {
   const ext = extname(filePath).toLowerCase();
@@ -27,6 +28,8 @@ function detectLinter(filePath: string): LinterType {
       return 'ruff';
     case '.go':
       return 'golangci';
+    case '.rs':
+      return 'clippy';
     default:
       return 'eslint'; // default
   }
@@ -60,9 +63,86 @@ export function buildLintCommand(
       };
     case 'ruff':
       return { cmd: ['ruff', 'check', filePath, '--output-format=concise'], timeout: 30000 };
+    case 'clippy':
+      return {
+        cmd: ['cargo', 'clippy', '--message-format=json'],
+        timeout: 180000,
+      };
     default:
       return { cmd: ['bun', 'x', 'eslint', filePath], timeout: 30000 };
   }
+}
+
+export function parseClippyJson(
+  output: string,
+  targetFile: string,
+  cargoRoot: string
+): {
+  errors: string[];
+  warnings: string[];
+  errorCount: number;
+  warningCount: number;
+} {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const target = resolve(targetFile);
+
+  for (const rawLine of output.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    const entry = parsed as {
+      reason?: string;
+      message?: {
+        level?: string;
+        message?: string;
+        code?: { code?: string } | null;
+        spans?: Array<{
+          file_name?: string;
+          line_start?: number;
+          column_start?: number;
+        }>;
+      };
+    };
+    if (entry.reason !== 'compiler-message' || !entry.message) continue;
+
+    const level = entry.message.level;
+    if (level !== 'error' && level !== 'warning') continue;
+
+    const spans = entry.message.spans ?? [];
+    const span = spans.find((s) => {
+      if (typeof s.file_name !== 'string') return false;
+      return resolve(cargoRoot, s.file_name) === target;
+    });
+    if (!span) continue;
+
+    const absSpan = resolve(cargoRoot, span.file_name as string);
+    const relPath = relative(cargoRoot, absSpan).split(sep).join('/');
+    const code = entry.message.code?.code;
+    const formatted = `${relPath}:${span.line_start ?? 0}:${span.column_start ?? 0} ${level}: ${
+      entry.message.message ?? ''
+    }${code ? ` [${code}]` : ''}`;
+
+    if (level === 'error') {
+      errors.push(formatted);
+    } else {
+      warnings.push(formatted);
+    }
+  }
+
+  return {
+    errors,
+    warnings,
+    errorCount: errors.length,
+    warningCount: warnings.length,
+  };
 }
 
 function parseEslintOutput(output: string): {
@@ -106,6 +186,7 @@ Auto-detects the appropriate linter based on file extension:
 - .php → PHPStan (or pint with linter: "pint")
 - .py → Ruff
 - .go → golangci-lint (lints the file's package, run from the nearest go.mod)
+- .rs → cargo clippy (whole crate, diagnostics filtered to the file)
 
 Returns structured output: error count, warning count, and formatted error list.`,
 
@@ -121,7 +202,7 @@ Returns structured output: error count, warning count, and formatted error list.
       .string()
       .optional()
       .describe(
-        'Override auto-detection: "eslint", "phpstan", "pint", "ruff", "golangci", or "auto" (default)'
+        'Override auto-detection: "eslint", "phpstan", "pint", "ruff", "golangci", "clippy", or "auto" (default)'
       ),
   },
 
@@ -142,12 +223,22 @@ Returns structured output: error count, warning count, and formatted error list.
 
       // 3. Build and run command
       let cwd = directory;
+      let cargoRoot: string | null = null;
       if (linter === 'golangci') {
         const moduleRoot = findGoModuleRoot(resolve(directory, file_path));
         if (!moduleRoot) {
           return `Error: No go.mod found above ${file_path}`;
         }
         cwd = moduleRoot;
+      } else if (linter === 'clippy') {
+        cargoRoot = findCargoRoot(resolve(directory, file_path));
+        if (!cargoRoot) {
+          return `Error: No Cargo.toml found above ${file_path}`;
+        }
+        cwd = cargoRoot;
+        if (!Bun.which('cargo')) {
+          return '⚠️ cargo not found. Install the Rust toolchain: https://rustup.rs (and run: rustup component add clippy)';
+        }
       }
       const { cmd, timeout } = buildLintCommand(linter, file_path, cwd);
 
@@ -185,7 +276,32 @@ Returns structured output: error count, warning count, and formatted error list.
 
       // 4. Parse output based on linter
       let result: string;
-      if (linter === 'eslint') {
+      if (linter === 'clippy') {
+        const root = cargoRoot ?? cwd;
+        const parsed = parseClippyJson(output, resolve(directory, file_path), root);
+        if (parsed.errorCount === 0 && parsed.warningCount === 0) {
+          if (exitCode === 0) {
+            result = `✅ No lint errors in ${file_path}`;
+          } else {
+            const tail = output.trim().split('\n').slice(-30).join('\n');
+            result = `Error: cargo clippy failed (exit ${exitCode}) for ${file_path}:\n${tail}`;
+          }
+        } else {
+          const lines: string[] = [
+            `Lint results for ${file_path} (clippy):`,
+            `  Errors: ${parsed.errorCount}, Warnings: ${parsed.warningCount}`,
+          ];
+          if (parsed.errors.length > 0) {
+            lines.push('\nErrors:');
+            lines.push(...parsed.errors.map((e) => `  ${e}`));
+          }
+          if (parsed.warnings.length > 0) {
+            lines.push('\nWarnings:');
+            lines.push(...parsed.warnings.map((w) => `  ${w}`));
+          }
+          result = lines.join('\n');
+        }
+      } else if (linter === 'eslint') {
         const parsed = parseEslintOutput(output);
         if (parsed.errorCount === 0 && parsed.warningCount === 0) {
           result = `✅ No lint errors in ${file_path}`;

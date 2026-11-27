@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   buildTestCommand,
   detectFramework,
+  parseCargoTestOutput,
   parseGoTestOutput,
   runTestsTool,
 } from '../src/tools/run-tests';
@@ -247,5 +248,79 @@ describe('run_tests Go support', () => {
       expect(result).toStartWith('✅');
     },
     120_000
+  );
+});
+
+describe('run_tests Rust support', () => {
+  let testDir: string;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `supertools-test-rust-${Date.now()}`);
+    mkdirSync(join(testDir, 'src'), { recursive: true });
+    mkdirSync(join(testDir, 'tests'), { recursive: true });
+    writeFileSync(
+      join(testDir, 'Cargo.toml'),
+      '[package]\nname = "fixture"\nversion = "0.1.0"\nedition = "2021"\n',
+      'utf-8'
+    );
+  });
+
+  afterEach(() => {
+    try {
+      rmSync(testDir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
+  });
+
+  it('detects cargo from a .rs file inside a crate', () => {
+    expect(detectFramework(testDir, join(testDir, 'tests', 'foo.rs'))).toBe('cargo');
+  });
+
+  it('builds cargo test with an integration-test selector and filter', () => {
+    const { cmd } = buildTestCommand('cargo', join(testDir, 'tests', 'foo.rs'), 'adds', testDir);
+    expect(cmd).toEqual(['cargo', 'test', '--test', 'foo', '--', 'adds']);
+  });
+
+  it('parses a failing cargo test run', () => {
+    const output = readFileSync(
+      new URL('./fixtures/rust/cargo-test-fail.txt', import.meta.url).pathname,
+      'utf-8'
+    );
+    const result = parseCargoTestOutput(output, 1);
+    expect(result).toContain('FAILED');
+    expect(result).toContain('adds');
+    expect(result).toContain('assertion');
+  });
+
+  it('parses a passing cargo test run', () => {
+    const result = parseCargoTestOutput(
+      'test result: ok. 3 passed; 0 failed; 0 ignored\n',
+      0
+    );
+    expect(result).toStartWith('✅');
+  });
+
+  it('reports a missing Cargo.toml', async () => {
+    const dir = join(tmpdir(), `supertools-test-rust-nomod-${Date.now()}`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'x.rs'), 'fn f() {}\n', 'utf-8');
+    const result = await runTestsTool.execute(
+      { test_file: join(dir, 'x.rs'), framework: 'cargo' },
+      mockCtx(dir)
+    );
+    rmSync(dir, { recursive: true });
+    expect(result).toContain('No Cargo.toml');
+  });
+
+  it.skipIf(!Bun.which('cargo'))(
+    'runs a failing cargo test end to end',
+    async () => {
+      const file = join(testDir, 'tests', 'it.rs');
+      writeFileSync(file, '#[test]\nfn adds() {\n    assert_eq!(1 + 1, 3);\n}\n', 'utf-8');
+      const result = await runTestsTool.execute({ test_file: file }, mockCtx(testDir));
+      expect(result).toContain('FAILED');
+    },
+    180_000
   );
 });

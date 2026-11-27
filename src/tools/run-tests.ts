@@ -6,10 +6,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { logDebugEvent } from '../lib/debug-logger';
 import { findGoModuleRoot, goPackageTarget } from '../lib/go-module';
+import { cargoTestArgs, findCargoRoot } from '../lib/rust-module';
 
-export type TestFramework = 'bun' | 'phpunit' | 'jest' | 'vitest' | 'go' | 'auto';
+export type TestFramework = 'bun' | 'phpunit' | 'jest' | 'vitest' | 'go' | 'cargo' | 'auto';
 
 export function detectFramework(directory: string, testFile?: string): TestFramework {
+  // A .rs file inside a Cargo crate is always cargo test, wherever the Cargo.toml sits
+  if (testFile?.endsWith('.rs') && findCargoRoot(testFile)) {
+    return 'cargo';
+  }
   // A _test.go file inside a Go module is always go test, wherever the go.mod sits
   if (testFile?.endsWith('_test.go') && findGoModuleRoot(testFile)) {
     return 'go';
@@ -56,6 +61,12 @@ export function buildTestCommand(
       const cmd = ['go', 'test', '-count=1', target];
       if (filter) cmd.push('-run', filter);
       return { cmd, timeout: 300000 };
+    }
+    case 'cargo': {
+      const root = directory ?? findCargoRoot(testFile) ?? '.';
+      const cmd = ['cargo', 'test', ...cargoTestArgs(root, testFile)];
+      if (filter) cmd.push('--', filter);
+      return { cmd, timeout: 600000 };
     }
     case 'bun':
       if (filter) {
@@ -112,6 +123,69 @@ export function parseGoTestOutput(output: string, exitCode: number | null): stri
       relevant.push(line);
     } else {
       inFailure = false;
+    }
+  }
+
+  if (relevant.length === 0) {
+    return `Test run failed (exit ${exitCode}):\n${lines.slice(-20).join('\n')}`;
+  }
+  return `Test results: FAILED\n\n${relevant.join('\n')}`;
+}
+
+// cargo test output: "test ... FAILED" lines, "---- name stdout ----" blocks, build errors, summary.
+export function parseCargoTestOutput(output: string, exitCode: number | null): string {
+  const lines = output.split('\n').filter((l) => l.trim());
+
+  if (exitCode === 0) {
+    const summary = lines.find((l) => l.includes('test result: ok.'));
+    return `✅ ${summary ? summary.trim() : 'All tests passed'}`;
+  }
+
+  const relevant: string[] = [];
+  let inStdoutBlock = false;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+
+    // per-test failure listing: "test name ... FAILED" (never "... ok")
+    if (/^test .+ \.\.\. FAILED$/.test(line)) {
+      relevant.push(raw);
+      inStdoutBlock = false;
+      continue;
+    }
+
+    const blockMatch = line.match(/^---- (.+) stdout ----$/);
+    if (blockMatch) {
+      relevant.push(raw);
+      inStdoutBlock = true;
+      continue;
+    }
+
+    if (inStdoutBlock) {
+      // the block ends at the next header, the "failures:" list or the summary
+      if (
+        line.startsWith('----') ||
+        line.startsWith('failures:') ||
+        line.startsWith('test result:')
+      ) {
+        inStdoutBlock = false;
+      } else {
+        relevant.push(raw);
+        continue;
+      }
+    }
+
+    if (line.startsWith('panicked at')) {
+      relevant.push(raw);
+      continue;
+    }
+    if (/^error(\[E\d+\])?:/.test(line) || line.startsWith('error: could not compile')) {
+      relevant.push(raw);
+      continue;
+    }
+    if (line.startsWith('test result: FAILED')) {
+      relevant.push(raw);
+      continue;
     }
   }
 
@@ -215,6 +289,7 @@ Auto-detects the test framework from project configuration:
 - phpunit (PHP/composer projects)
 - vitest / jest (package.json detection)
 - go test (go.mod; runs the package of the given _test.go file)
+- cargo test (.rs / tests/*.rs)
 
 Returns structured output: pass/fail counts, failure details, execution time.`,
 
@@ -234,7 +309,7 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
       .string()
       .optional()
       .describe(
-        'Override auto-detection: "bun", "phpunit", "jest", "vitest", "go", or "auto" (default)'
+        'Override auto-detection: "bun", "phpunit", "jest", "vitest", "go", "cargo", or "auto" (default)'
       ),
   },
 
@@ -255,8 +330,20 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
         (frameworkArg as TestFramework) || detectFramework(directory, test_file);
 
       // 3. Build and run command
-      // Go: run from the module root of the test file, not from the project directory
-      const cwd = framework === 'go' ? (findGoModuleRoot(test_file) ?? directory) : directory;
+      // Go/Rust: run from the crate/module root of the test file, not from the project directory
+      let cwd = directory;
+      if (framework === 'go') {
+        cwd = findGoModuleRoot(test_file) ?? directory;
+      } else if (framework === 'cargo') {
+        const root = findCargoRoot(test_file);
+        if (!root) {
+          return `Error: No Cargo.toml found above ${test_file}`;
+        }
+        cwd = root;
+        if (!Bun.which('cargo')) {
+          return '⚠️ cargo not found. Install the Rust toolchain: https://rustup.rs';
+        }
+      }
       const { cmd, timeout } = buildTestCommand(framework, test_file, filter, cwd);
 
       logDebugEvent('run_tests.command', { cmd: cmd.join(' '), framework });
@@ -297,8 +384,13 @@ Returns structured output: pass/fail counts, failure details, execution time.`,
       }
 
       // 5. Parse and format output
+      const exitCode = await proc.exited;
       const result =
-        framework === 'go' ? parseGoTestOutput(output, await proc.exited) : parseTestOutput(output);
+        framework === 'go'
+          ? parseGoTestOutput(output, exitCode)
+          : framework === 'cargo'
+            ? parseCargoTestOutput(output, exitCode)
+            : parseTestOutput(output);
 
       logDebugEvent('run_tests.complete', {
         test_file,
