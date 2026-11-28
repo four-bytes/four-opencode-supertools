@@ -1,0 +1,7 @@
+{
+  "plugins": [
+    { "technicalName": "AlphaPlugin", "label": "Alpha", "isActive": true },
+    { "technicalName": "BetaPlugin", "label": "Beta", "isActive": false },
+    { "technicalName": "ThemePlugin", "label": "Theme", "isActive": true }
+  ]
+}

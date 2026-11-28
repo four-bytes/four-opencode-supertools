@@ -53,9 +53,9 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - Entry: `src/four-opencode-supertools.ts` — delegates to the module registry (`src/lib/modules/`) and registers the active tool bundles
 - Modules: `src/modules/<id>.ts` — one definition per module, tools loaded lazily via dynamic import
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
-- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain)
+- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain), `shopware/` (plugin load order, theme inheritance/view chain)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 428 tests, bun-native
+- Tests: `tests/` — 476 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

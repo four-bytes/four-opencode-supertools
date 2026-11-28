@@ -1,0 +1,5 @@
+{
+  "name": "ParentTheme",
+  "technicalName": "ParentTheme",
+  "views": ["@Storefront"]
+}

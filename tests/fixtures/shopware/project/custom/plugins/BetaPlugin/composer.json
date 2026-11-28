@@ -1,0 +1,6 @@
+{
+  "name": "four/beta-plugin",
+  "type": "shopware-platform-plugin",
+  "version": "2.0.0",
+  "description": "Beta plugin"
+}

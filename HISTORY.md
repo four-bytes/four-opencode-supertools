@@ -13,6 +13,7 @@ All notable changes to this project. Format follows [Keep a Changelog](https://k
 - `twig_blocks` auto-detects custom inheritance tags from project Twig extensions (`ExtendsTokenParser` → `extends`, `IncludeTokenParser` → `include`, `EmbedTokenParser` → `embed`, `UseTokenParser` → `use`, `BlockTokenParser` → `block`) and merges them with `.supertools.json` `twig.tags` (config wins), over a bounded `src/` scan (#92).
 - New `twig.discovery.vendor` (default `false`) and `twig.discovery.maxFiles` (default `3000`) config keys; unmapped tags carry a mapping hint and metadata reports `customTags`, `configTags` and `discoveryIncomplete`. Discovery is graceful: a missing `src/`, unreadable files or a capped scan never fail the tool (#92).
 - Tests: custom-tag discovery fixtures (extension + token parsers, unmapped parent), scanner `tagMap` cases and config-override/tool integration, plus discovery config validation (#92).
+- Shopware resolver library (`src/lib/shopware/`): active plugin load order from runtime `plugin:list` (JSON, legacy `--json`, then text table) and static `custom/plugins`, `custom/static-plugins` and `custom/apps` fallback; effective theme inheritance/view chain from `dbal:run-sql` theme rows merged with `theme.json`, parent chains, `@Plugins` expansion over active plugins only, de-duplicated view roots and honest `unresolved`/`incomplete` reporting. Library only — no tool or version change (#93).
 
 ### Changed
 - Tool count 20 → 21; the `symfony` module now registers `twig_blocks` (#91).

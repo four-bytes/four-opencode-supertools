@@ -1,0 +1,5 @@
+{
+  "name": "OrderTheme",
+  "technicalName": "OrderTheme",
+  "views": ["@Plugins", "@Storefront"]
+}
