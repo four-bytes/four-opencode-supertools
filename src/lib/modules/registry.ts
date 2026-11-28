@@ -14,6 +14,7 @@ import { rustModule } from '../../modules/rust';
 import { symfonyModule } from '../../modules/symfony';
 import { doctrineModule } from '../../modules/doctrine';
 import { shopwareModule } from '../../modules/shopware';
+import { termlabModule } from '../../modules/termlab';
 
 export interface ModuleToolsContext {
   /** All resolved active module ids (after dependency expansion). */
@@ -47,6 +48,7 @@ const CANONICAL_ORDER: ModuleId[] = [
   'symfony',
   'doctrine',
   'shopware',
+  'termlab',
 ];
 
 const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
@@ -60,6 +62,7 @@ const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
   symfony: symfonyModule,
   doctrine: doctrineModule,
   shopware: shopwareModule,
+  termlab: termlabModule,
 };
 
 const KNOWN_MODULE_IDS = new Set<string>(CANONICAL_ORDER);

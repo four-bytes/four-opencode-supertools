@@ -9,8 +9,8 @@
 - Lint: `bun run lint` (`eslint src/ tests/`)
 - Test: `bun test`
 
-## Tool Stack (23 tools, grouped into modules)
-Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`, `shopware`; `doctrine` is reserved for a later issue. See `src/lib/modules/` and `src/modules/`.
+## Tool Stack (29 tools, grouped into modules)
+Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`, `shopware`, `termlab` (terminal lab; tmux oracle, needs tmux for `term_run`/`trace_replay`/the `tmux` width model); `doctrine` is reserved for a later issue. See `src/lib/modules/` and `src/modules/`.
 
 ### File Editing (4 tools)
 - `batch_edit` — grep→replace across N files. Saves ~80% tokens vs. grep→read→edit×N
@@ -47,6 +47,16 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - `sw6_plugin` — Shopware 6 plugins. `mode: list` reports state and load order; `mode: overview` lists what one plugin registers (services, scheduled tasks, subscribers, entities, migrations, admin modules, Twig overrides) with `path:line` and a `sw6_theme` pointer for theme plugins; `mode: lifecycle` plans or runs the console sequence (`plugin:install|activate|deactivate|update|uninstall|refresh` + `cache:clear`, plus `theme:compile` for theme state changes). Lifecycle is a dry run unless `confirm: true`; uninstall keeps user data unless `keepUserData: false`.
 - `sw6_theme` — Shopware 6 themes. `mode: list` reports the theme hierarchy with parent chains and sales-channel assignments; `mode: resolve` returns the effective view chain plus declared style/script assets (most-specific first) for one theme or a sales channel; `mode: compile` runs `theme:compile` (idempotent, no confirm gate) and returns SCSS errors as `path:line[:col] message`, never raw output. `salesChannel` maps to `--only=<id>` (Shopware 6.5+) for compile and to the bound theme for resolve; `timeoutMs` is clamped to 1000…900000
 
+### Terminal Lab (6 tools)
+- `term_run` — drive a headless tmux session: send literal text, named keys or SGR mouse events per step and capture changed rows with attribute runs; optional per-step DECRQCRA-style checksum; each run owns a private tmux server and always kills it. Returns `available:false` when tmux is missing
+- `trace_decode` — turbo-tui `TURBO_TUI_TRACE` v1 → one compact op line per terminal operation (MOVE, SGR, OSC8, TEXT, CLEAR, …) per frame; frame-range and region filters, bounded per-frame op limit
+- `trace_replay` — replay recorded frames through an independent tmux emulator and compare the rendered screen against the recorded back buffer and modifier masks (colour never compared); `ok:true matched:false` reports divergences as data. Needs tmux
+- `cell_history` — ordered writes per screen cell over a trace (character, modifier names/mask, OSC 8 link) by simulating the recorded byte stream; pure TypeScript, no tmux
+- `width_check` — grapheme display width under unicode-width, wcwidth and an independent tmux emulator model (em dash, emoji, VS16, CJK); flags where the models disagree
+- `term_checksum` — DECRQCRA-style `utf16-sum-mod-65536`: compute over a screen dump or a trace frame back buffer, emit the DECRQCRA query (`CSI Pid;Pp;Pt;Pl;Pb;Pr*y`), parse the DECCKSR response (`DCS Pid!~hhhh ST` / `CSI Pid;value*y`); attributes are never included
+
+The oracle is tmux only — an independent VT implementation, not the user's terminal (Windows Terminal/Kitty/WezTerm rendering bugs cannot be reproduced). Trace format v1, walkthroughs and limitations: `docs/termlab.md`.
+
 ### AST / Refactoring (4 tools)
 - `extract_method` — extract complete statements into a new method. Rejects partial statements, return/yield/goto, escaping break/continue, static `$this`, and values that escape
 - `rename_symbol` — rename a symbol. PHP: tree-sitter, one file, provably same-scope references (structural, NOT semantic cross-file resolution); variables require `line`. Go/Rust/TS/JS: LSP `prepareRename` + `rename`, applied atomically (needs `lsp` + the language module); `line` disambiguates, `preview`/`dry_run` preview without writing
@@ -57,9 +67,9 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - Entry: `src/four-opencode-supertools.ts` — delegates to the module registry (`src/lib/modules/`) and registers the active tool bundles
 - Modules: `src/modules/<id>.ts` — one definition per module, tools loaded lazily via dynamic import
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
-- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain), `shopware/` (plugin load order, theme inheritance/view chain, plugin report/lifecycle)
+- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain), `shopware/` (plugin load order, theme inheritance/view chain, plugin report/lifecycle), `termlab/` (trace parser, tmux oracle, SGR screen model, width models, checksum)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 533 tests, bun-native
+- Tests: `tests/` — 640 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

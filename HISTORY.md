@@ -2,6 +2,20 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.14.0] - 2026-11-28
+
+### Added
+- New `termlab` module with six terminal-lab tools, auto-detected for Rust/TypeScript/Go projects with a TUI dependency or an `examples/` directory and selectable via `"modules": ["termlab"]` (#119).
+- `term_run` drives a headless tmux session (literal text, named keys, SGR mouse steps) and captures changed rows with attribute runs plus an optional per-step checksum; `trace_decode` decodes turbo-tui `TURBO_TUI_TRACE` v1 frames into one compact op line per terminal operation (#119).
+- `trace_replay` feeds recorded frames through an independent tmux terminal emulator and compares the rendered screen against the recorded back buffer and modifier masks — divergences are reported as data, colour is never compared; `cell_history` reconstructs the ordered writes per screen cell over a trace without tmux (#119).
+- `width_check` reports grapheme display width under unicode-width, wcwidth and an independent tmux emulator model and flags disagreements; `term_checksum` computes the DECRQCRA-style `utf16-sum-mod-65536` checksum over a screen dump or a trace frame and emits/parses the DECRQCRA request and DECCKSR response sequences (#119).
+- tmux oracle: `term_run`, `trace_replay` and the `tmux` width model run against a private per-call tmux server (killed after every run) and return `available: false` with a clear hint when tmux is missing (#119).
+- Real-fixture verification: `tests/fixtures/termlab/wt-trace-frame1.bin` (183x52, one frame recorded from turbo-tui #68) decodes, checksums (`4b19`) and replays through the tmux oracle with `matched: true` (#119).
+- Tests: 12 termlab test files covering the trace format, ops/SGR/mouse encoding, checksum, width models, the tmux seam and real-tmux paths, and the fixture replay (#119).
+
+### Changed
+- Tool count 23 → 29; the `termlab` module registers `term_run`, `trace_decode`, `trace_replay`, `cell_history`, `width_check` and `term_checksum` (#119).
+
 ## [0.13.1] - 2026-11-28
 
 ### Changed
