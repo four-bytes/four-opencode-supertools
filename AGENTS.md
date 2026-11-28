@@ -3,14 +3,14 @@
 ## Pointer
 - Meta-repo: `~/four-opencode-plugins/`
 - Repo: `four-bytes/four-opencode-supertools`
-- Package: `@four-bytes/four-opencode-supertools` v0.11.0
+- Package: `@four-bytes/four-opencode-supertools` v0.12.0
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Typecheck: `bun run typecheck` (`tsc --noEmit`, checks `src/` **and** `tests/`)
 - Lint: `bun run lint` (`eslint src/ tests/`)
 - Test: `bun test`
 
-## Tool Stack (21 tools, grouped into modules)
-Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`; `doctrine` and `shopware` are reserved for later issues. See `src/lib/modules/` and `src/modules/`.
+## Tool Stack (22 tools, grouped into modules)
+Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`, `shopware`; `doctrine` is reserved for a later issue. See `src/lib/modules/` and `src/modules/`.
 
 ### File Editing (4 tools)
 - `batch_edit` — grep→replace across N files. Saves ~80% tokens vs. grep→read→edit×N
@@ -43,6 +43,9 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - `symfony_events` — event listeners sorted by priority (`class::method prio`). Runtime `debug:event-dispatcher --format=json`; static tag + `getSubscribedEvents()` fallback marked incomplete
 - `twig_blocks` — Twig override chain for a block or template: `extends`, `block`, `parent()`, `use`, `embed`, `include` with `path:line`. Auto-detects custom inheritance tags from project Twig extensions and honours `.supertools.json` `twig.tags`; runtime `debug:twig --format=json`; static `config/packages/twig.*` fallback marked incomplete; tolerant scanner reports unknown tags. In Shopware projects (shopware module active) a Storefront adapter maps `sw_extends`/`sw_include` (plus `sw_embed`/`sw_use`) onto the built-in semantics, treats every other `sw_*` tag as known, and resolves the storefront → plugin → theme view chain from the Shopware resolver; optional `theme` (name/technical name) and `salesChannel` (hex id) args filter the chain
 
+### Shopware (1 tool)
+- `sw6_plugin` — Shopware 6 plugins. `mode: list` reports state and load order; `mode: overview` lists what one plugin registers (services, scheduled tasks, subscribers, entities, migrations, admin modules, Twig overrides) with `path:line` and a `sw6_theme` pointer for theme plugins; `mode: lifecycle` plans or runs the console sequence (`plugin:install|activate|deactivate|update|uninstall|refresh` + `cache:clear`, plus `theme:compile` for theme state changes). Lifecycle is a dry run unless `confirm: true`; uninstall keeps user data unless `keepUserData: false`.
+
 ### AST / Refactoring (4 tools)
 - `extract_method` — extract complete statements into a new method. Rejects partial statements, return/yield/goto, escaping break/continue, static `$this`, and values that escape
 - `rename_symbol` — rename a symbol. PHP: tree-sitter, one file, provably same-scope references (structural, NOT semantic cross-file resolution); variables require `line`. Go/Rust/TS/JS: LSP `prepareRename` + `rename`, applied atomically (needs `lsp` + the language module); `line` disambiguates, `preview`/`dry_run` preview without writing
@@ -53,9 +56,9 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - Entry: `src/four-opencode-supertools.ts` — delegates to the module registry (`src/lib/modules/`) and registers the active tool bundles
 - Modules: `src/modules/<id>.ts` — one definition per module, tools loaded lazily via dynamic import
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
-- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain), `shopware/` (plugin load order, theme inheritance/view chain)
+- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain), `shopware/` (plugin load order, theme inheritance/view chain, plugin report/lifecycle)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 476 tests, bun-native
+- Tests: `tests/` — 514 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

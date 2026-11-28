@@ -8,9 +8,9 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers up to **21 tools**, grouped into selectable modules (see
+The plugin registers up to **22 tools**, grouped into selectable modules (see
 [Modules](#modules)). The default `"modules": "auto"` registers every tool that
-applies to the project — a Symfony PHP project gets all 21. This table mirrors the
+applies to the project — a Symfony PHP project gets all 22. This table mirrors the
 authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -67,6 +67,12 @@ The LSP registry resolves each server's project root from markers (nearest `tsco
 All three call `bin/console` (`debug:container` / `debug:event-dispatcher` /
 `debug:twig` with `--format=json`) and fall back to static config with
 `source: "static", incomplete: true` when the console cannot run.
+
+### Shopware (1)
+
+| Tool             | Description                                                                 |
+| ---------------- | --------------------------------------------------------------------------- |
+| **`sw6_plugin`** | Plugin state/load order, what a plugin registers, and the lifecycle sequence |
 
 ### AST / Refactoring (4)
 
@@ -216,6 +222,29 @@ and namespaces come from `config/packages/twig.(yaml|yml)` and the result is mar
 name or technical name), `salesChannel` (string, optional — Shopware only, hex
 sales channel id).
 
+### `sw6_plugin`
+
+Work with Shopware 6 plugins.
+
+- `mode: "list"` reports every plugin in load order with version, active state,
+  kind and theme detection.
+- `mode: "overview"` lists what one plugin registers — services, scheduled tasks,
+  subscribers, entities, migrations, admin modules and Twig overrides — with
+  `path:line` references and never file contents. Theme plugins carry a pointer to
+  `sw6_theme` for the storefront view chain.
+- `mode: "lifecycle"` plans or runs the console sequence for `refresh`, `install`,
+  `activate`, `deactivate`, `update` and `uninstall`, followed by `cache:clear`;
+  theme state changes append `theme:compile`.
+- Safety: lifecycle is a **dry run** unless `confirm: true`, and `uninstall` keeps
+  user data by default (`--keep-user-data`) unless `keepUserData: false`.
+
+**Parameters:** `mode` (`list` | `overview` | `lifecycle`, default `list`),
+`plugin` (string, optional — required for `overview` and every lifecycle action
+except `refresh`), `action` (`refresh` | `install` | `activate` | `deactivate` |
+`update` | `uninstall`, optional — required in lifecycle mode), `confirm`
+(boolean, default `false`), `keepUserData` (boolean, default `true`), `limit`
+(number, default 50), `directory` (string, optional).
+
 ### `extract_method`
 
 Extract complete statements from a PHP method into a new method using tree-sitter.
@@ -355,7 +384,7 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `rust`     | `rename_symbol` (via LSP)                     | `Cargo.toml`                           |
 | `symfony`  | `symfony_service`, `symfony_events`, `twig_blocks` | `symfony/framework-bundle` in composer |
 | `doctrine` | (later issue)                                 | `doctrine/orm` in composer             |
-| `shopware` | (later issue)                                 | `shopware/core` in composer            |
+| `shopware` | `sw6_plugin`                                  | `shopware/core` in composer            |
 
 Auto mode always starts with `core`, `search` and `lsp`, then adds `typescript`,
 `php`, `go`, `rust`, `symfony`, `doctrine` and `shopware` when their marker is
