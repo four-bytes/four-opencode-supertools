@@ -1,0 +1,23 @@
+[
+  {
+    "name": "AlphaPlugin",
+    "label": "Alpha",
+    "version": "1.0.0",
+    "active": true,
+    "path": "custom/plugins/AlphaPlugin"
+  },
+  {
+    "name": "BetaPlugin",
+    "label": "Beta",
+    "version": "2.0.0",
+    "active": false,
+    "path": "custom/plugins/BetaPlugin"
+  },
+  {
+    "name": "ThemePlugin",
+    "label": "Theme",
+    "version": "1.2.3",
+    "active": true,
+    "path": "custom/plugins/ThemePlugin"
+  }
+]

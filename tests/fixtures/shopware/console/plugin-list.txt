@@ -1,0 +1,5 @@
+Plugin        Label    Version   Active
+------------  -------  --------  ------
+AlphaPlugin   Alpha    1.0.0     Yes
+BetaPlugin    Beta     2.0.0     No
+ThemePlugin   Theme    1.2.3     x

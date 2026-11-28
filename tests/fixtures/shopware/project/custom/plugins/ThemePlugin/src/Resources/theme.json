@@ -1,0 +1,5 @@
+{
+  "name": "ThemePlugin",
+  "technicalName": "ThemePlugin",
+  "views": ["@Storefront", "@Plugins"]
+}

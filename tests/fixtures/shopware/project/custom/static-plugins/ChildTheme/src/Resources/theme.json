@@ -1,0 +1,5 @@
+{
+  "name": "ChildTheme",
+  "technicalName": "ChildTheme",
+  "views": ["@Storefront", "@Plugins"]
+}
