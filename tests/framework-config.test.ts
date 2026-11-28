@@ -26,7 +26,7 @@ describe('loadSupertoolsConfig', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.config).toEqual({
-        twig: { tags: {} },
+        twig: { tags: {}, discovery: { vendor: false, maxFiles: 3000 } },
         lsp: { idleTimeoutMs: null, servers: [] },
       });
       expect(result.path).toBeNull();
@@ -113,6 +113,34 @@ describe('loadSupertoolsConfig', () => {
     if (!result.ok) {
       expect(result.key).toBe('twig.tags.x');
     }
+  });
+});
+
+describe('loadSupertoolsConfig — twig discovery', () => {
+  it('defaults discovery when the section is absent', () => {
+    writeConfig('{"twig":{"tags":{}}}');
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok && result.config.twig.discovery).toEqual({ vendor: false, maxFiles: 3000 });
+  });
+
+  it('parses vendor and maxFiles', () => {
+    writeConfig('{"twig":{"discovery":{"vendor":true,"maxFiles":42}}}');
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok && result.config.twig.discovery).toEqual({ vendor: true, maxFiles: 42 });
+  });
+
+  it('rejects a non-boolean vendor and names the key', () => {
+    writeConfig('{"twig":{"discovery":{"vendor":"yes"}}}');
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.key).toBe('twig.discovery.vendor');
+  });
+
+  it('rejects a non-positive maxFiles and names the key', () => {
+    writeConfig('{"twig":{"discovery":{"maxFiles":0}}}');
+    const result = loadSupertoolsConfig(dir);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.key).toBe('twig.discovery.maxFiles');
   });
 });
 

@@ -33,6 +33,15 @@ export interface TwigScanResult {
   unknownTags: string[];
 }
 
+export interface ScanTwigOptions {
+  /**
+   * Custom tag name → built-in semantics (`extends`, `include`, `embed`,
+   * `use`, `block`). A mapped name is known and its structural target is read
+   * using the actual tag name.
+   */
+  tagMap?: Readonly<Record<string, string>>;
+}
+
 /** Builtin Twig tag names that are never reported as unknown. */
 export const TWIG_KNOWN_TAGS: ReadonlySet<string> = new Set([
   'block',
@@ -72,6 +81,12 @@ export const TWIG_KNOWN_TAGS: ReadonlySet<string> = new Set([
   'flush',
   'deprecated',
 ]);
+
+/** A tag is known when it is built in or appears in the custom tag map. */
+export function isKnownTwigTag(name: string, tagMap?: Readonly<Record<string, string>>): boolean {
+  if (TWIG_KNOWN_TAGS.has(name)) return true;
+  return tagMap !== undefined && Object.prototype.hasOwnProperty.call(tagMap, name);
+}
 
 const PARENT_CALL = /\bparent\s*\(/;
 const INCLUDE_CALL = /\binclude\s*\(\s*(['"])([^'"]*)\1/g;
@@ -168,7 +183,7 @@ function lineAt(starts: number[], offset: number): number {
   return 1;
 }
 
-function scan(source: string): TwigScanResult {
+function scan(source: string, tagMap?: Readonly<Record<string, string>>): TwigScanResult {
   const chars = source.split('');
   const starts = lineStarts(source);
   const entries: TagEntry[] = [];
@@ -240,8 +255,12 @@ function scan(source: string): TwigScanResult {
   for (const entry of entries) {
     tags.push({ name: entry.name, line: entry.line });
 
-    if (!TWIG_KNOWN_TAGS.has(entry.name)) unknown.add(entry.name);
+    const semantic = tagMap?.[entry.name] ?? entry.name;
 
+    if (!isKnownTwigTag(entry.name, tagMap)) unknown.add(entry.name);
+
+    // Custom tags mapped to `block` are treated as known no-ops: their opening
+    // syntax is not the built-in `block <name>` shape, so no block is emitted.
     if (entry.name === 'block') {
       const name = blockName(entry.body);
       if (name) {
@@ -258,26 +277,26 @@ function scan(source: string): TwigScanResult {
       continue;
     }
 
-    if (entry.name === 'extends' && extendsRef === null) {
-      const target = quotedAfterDirective(entry.body, 'extends');
+    if (semantic === 'extends' && extendsRef === null) {
+      const target = quotedAfterDirective(entry.body, entry.name);
       if (target) extendsRef = { target, line: entry.line };
       continue;
     }
 
-    if (entry.name === 'use') {
-      const target = quotedAfterDirective(entry.body, 'use');
+    if (semantic === 'use') {
+      const target = quotedAfterDirective(entry.body, entry.name);
       if (target) uses.push({ target, line: entry.line });
       continue;
     }
 
-    if (entry.name === 'embed') {
-      const target = quotedAfterDirective(entry.body, 'embed');
+    if (semantic === 'embed') {
+      const target = quotedAfterDirective(entry.body, entry.name);
       if (target) embeds.push({ target, line: entry.line });
       continue;
     }
 
-    if (entry.name === 'include') {
-      const target = quotedAfterDirective(entry.body, 'include');
+    if (semantic === 'include') {
+      const target = quotedAfterDirective(entry.body, entry.name);
       if (target) includes.push({ target, line: entry.line });
     }
   }
@@ -310,9 +329,9 @@ function scan(source: string): TwigScanResult {
 }
 
 /** Scan Twig source. Never throws — malformed input yields a partial result. */
-export function scanTwig(source: string): TwigScanResult {
+export function scanTwig(source: string, options?: ScanTwigOptions): TwigScanResult {
   try {
-    return scan(source);
+    return scan(source, options?.tagMap);
   } catch {
     return emptyResult();
   }
