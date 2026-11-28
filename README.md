@@ -8,9 +8,9 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers up to **22 tools**, grouped into selectable modules (see
+The plugin registers up to **23 tools**, grouped into selectable modules (see
 [Modules](#modules)). The default `"modules": "auto"` registers every tool that
-applies to the project — a Symfony PHP project gets all 22. This table mirrors the
+applies to the project — a Symfony PHP project gets all 23. This table mirrors the
 authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -68,11 +68,12 @@ All three call `bin/console` (`debug:container` / `debug:event-dispatcher` /
 `debug:twig` with `--format=json`) and fall back to static config with
 `source: "static", incomplete: true` when the console cannot run.
 
-### Shopware (1)
+### Shopware (2)
 
 | Tool             | Description                                                                 |
 | ---------------- | --------------------------------------------------------------------------- |
 | **`sw6_plugin`** | Plugin state/load order, what a plugin registers, and the lifecycle sequence |
+| **`sw6_theme`**  | Theme hierarchy, resolved view chain + assets, and `theme:compile` with SCSS errors |
 
 ### AST / Refactoring (4)
 
@@ -245,6 +246,28 @@ except `refresh`), `action` (`refresh` | `install` | `activate` | `deactivate` |
 (boolean, default `false`), `keepUserData` (boolean, default `true`), `limit`
 (number, default 50), `directory` (string, optional).
 
+### `sw6_theme`
+
+Work with Shopware 6 themes.
+
+- `mode: "list"` reports the theme hierarchy with each theme's parent chain and
+  sales-channel assignments; unresolved parents are reported honestly.
+- `mode: "resolve"` returns the effective view chain plus the declared
+  style/script assets (most-specific theme first, with `exists` flags and
+  root-relative paths) for one theme. Give `theme` (name or technical name),
+  or give only `salesChannel` to resolve the theme bound to that channel.
+- `mode: "compile"` runs `theme:compile` (idempotent — no confirm gate). SCSS
+  errors are returned as `path:line[:col] message` only, never raw console
+  output; `salesChannel` adds `--only=<id>` (Shopware 6.5+).
+
+**Parameters:** `mode` (`list` | `resolve` | `compile`, default `list`), `theme`
+(string, optional — required for `resolve` unless `salesChannel` is given),
+`salesChannel` (string, optional — hex id; `--only=<id>` for compile
+(Shopware 6.5+), mapped theme for resolve), `limit` (number, default 50 — max
+asset/error entries),
+`timeoutMs` (number, optional — compile timeout, default 300000, clamped to
+1000…900000), `directory` (string, optional).
+
 ### `extract_method`
 
 Extract complete statements from a PHP method into a new method using tree-sitter.
@@ -384,7 +407,7 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `rust`     | `rename_symbol` (via LSP)                     | `Cargo.toml`                           |
 | `symfony`  | `symfony_service`, `symfony_events`, `twig_blocks` | `symfony/framework-bundle` in composer |
 | `doctrine` | (later issue)                                 | `doctrine/orm` in composer             |
-| `shopware` | `sw6_plugin`                                  | `shopware/core` in composer            |
+| `shopware` | `sw6_plugin`, `sw6_theme`                     | `shopware/core` in composer            |
 
 Auto mode always starts with `core`, `search` and `lsp`, then adds `typescript`,
 `php`, `go`, `rust`, `symfony`, `doctrine` and `shopware` when their marker is

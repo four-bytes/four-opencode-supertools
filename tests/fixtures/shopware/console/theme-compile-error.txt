@@ -1,0 +1,12 @@
+$ bin/console theme:compile
+
+Compiling theme "ChildTheme" for all sales channels
+[critical] app/storefront/src/scss/base.scss:12:5: Undefined variable $brand-color.
+11 |   color: $brand-color;
+   |          ^^^^^^^^^^^^
+
+ERROR in ./app/storefront/src/scss/child.scss 7:3
+SassError: Expected a selector.
+
+Theme compilation finished with 2 errors.
+Cache warmed in 812 ms.

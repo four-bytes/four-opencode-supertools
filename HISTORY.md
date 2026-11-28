@@ -2,6 +2,16 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.13.0] - 2026-11-28
+
+### Added
+- New `sw6_theme` in the `shopware` module: `mode: list` reports the theme hierarchy with parent chains and sales-channel assignments; `mode: resolve` returns the effective view chain plus declared style/script assets (most-specific first, with `exists` flags) for one theme or a sales channel; `mode: compile` runs `theme:compile` (idempotent, no confirm gate) and returns SCSS errors as `path:line[:col] message`, never raw console output (#98).
+- `salesChannel` maps to `--only=<id>` for compile and to the bound theme for resolve; an unassigned channel returns an error object with the available channels instead of throwing. `timeoutMs` is clamped to 1000…900000 (#98).
+- Tests: `sw6_theme` list/resolve/compile against the Shopware theme fixtures, covering the merged view order and assets, sales-channel mapping, SCSS-error formatting, timeout clamping and non-Shopware/missing-argument paths (#98).
+
+### Changed
+- Tool count 22 → 23; the `shopware` module now registers `sw6_theme` (#98).
+
 ## [0.12.0] - 2026-11-28
 
 ### Added

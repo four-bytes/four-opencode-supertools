@@ -8,6 +8,7 @@ export const shopwareModule: ModuleDefinition = {
   requires: ['symfony'],
   tools: async () => {
     const { sw6PluginTool } = await import('../tools/sw6-plugin');
-    return { sw6_plugin: sw6PluginTool };
+    const { sw6ThemeTool } = await import('../tools/sw6-theme');
+    return { sw6_plugin: sw6PluginTool, sw6_theme: sw6ThemeTool };
   },
 };
