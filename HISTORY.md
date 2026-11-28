@@ -2,6 +2,18 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.11.0] - 2026-11-28
+
+### Added
+- New `twig_blocks` in the `symfony` module: shows the full override chain for a block or template — `extends`, `block`, `parent()`, `use`, `embed` and `include` — with compact `path:line` references and never file contents (#91).
+- Tolerant pure-TS Twig scanner (`src/lib/twig/scanner.ts`): block open/close with `parentCall`, extends/use/embed/include, unknown-tag reporting, comment and verbatim skipping, CRLF-safe line numbers. Malformed input never throws (#91).
+- Loader/template resolver (`src/lib/twig/resolver.ts`): runtime `debug:twig --format=json` loader paths and namespaces, static `config/packages/twig.(yaml|yml)` fallback marked incomplete, `@Bundle` resolution with `templates/bundles/<Bundle>/` overrides before namespace and bounded vendor search, plus cycle-safe extends chains (#91).
+- Block chain builder (`src/lib/twig/blocks.ts`): base → derived ordering by extends depth, bundle overrides after their base, bounded template walk and aggregated unknown tags (#91).
+- Tests: a Symfony-like Twig fixture (runtime `debug:twig` JSON, static-only fixture, bundle base + override, unknown tag) and 21 new bun-native tests (#91).
+
+### Changed
+- Tool count 20 → 21; the `symfony` module now registers `twig_blocks` (#91).
+
 ## [0.10.0] - 2026-11-28
 
 ### Added

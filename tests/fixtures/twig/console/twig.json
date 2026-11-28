@@ -1,0 +1,6 @@
+{
+  "loader_paths": ["templates", "src/AcmeBlog/Resources/views"],
+  "namespaces": {
+    "@AcmeBlog": "src/AcmeBlog/Resources/views"
+  }
+}

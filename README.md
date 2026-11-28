@@ -8,9 +8,9 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers up to **20 tools**, grouped into selectable modules (see
+The plugin registers up to **21 tools**, grouped into selectable modules (see
 [Modules](#modules)). The default `"modules": "auto"` registers every tool that
-applies to the project — a Symfony PHP project gets all 20. This table mirrors the
+applies to the project — a Symfony PHP project gets all 21. This table mirrors the
 authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -56,17 +56,17 @@ The LSP registry resolves each server's project root from markers (nearest `tsco
 
 `lsp_code_action` is language-agnostic and prints one line per action. Typical kinds: Go — `refactor.extract.function`/`.variable` and `quickfix` stub methods; Rust — `refactor.extract.function` and fill match arms; TypeScript/JavaScript — `refactor.extract.function`/`.constant` and `source.organizeImports`. Apply with `index`, exact `title` or exact `kind`; `dryRun` returns the diff summary without writing.
 
-### Symfony (2)
+### Symfony (3)
 
 | Tool                | Description                                                              |
 | ------------------- | ------------------------------------------------------------------------ |
 | **`symfony_service`** | Service by id/class/partial/tag: class, arguments, tags, decorator chain |
 | **`symfony_events`**  | Event listeners sorted by priority (`class::method prio`)                |
+| **`twig_blocks`**     | Twig override chain for a block/template with `path:line`                |
 
-Both call `bin/console` (`debug:container` / `debug:event-dispatcher` with
-`--format=json`) and fall back to static `config/services.*` +
-`getSubscribedEvents()` with `source: "static", incomplete: true` when the console
-cannot run.
+All three call `bin/console` (`debug:container` / `debug:event-dispatcher` /
+`debug:twig` with `--format=json`) and fall back to static config with
+`source: "static", incomplete: true` when the console cannot run.
 
 ### AST / Refactoring (4)
 
@@ -174,6 +174,28 @@ List listeners for an event, sorted by priority. Runtime data comes from
 `incomplete`.
 
 **Parameters:** `event` (string), `limit` (number, default 50),
+`directory` (string, optional).
+
+### `twig_blocks`
+
+Show the Twig override chain for a block name or outline a template and its
+`extends` chain. Runtime data comes from
+`bin/console debug:twig --format=json`; without a working console the loader paths
+and namespaces come from `config/packages/twig.(yaml|yml)` and the result is marked
+`incomplete`.
+
+- `mode: "block"` collects every `{% block <name> %}` definition, ordered
+  base → derived using the `extends` graph. `parentCall` reports whether the block
+  body calls `parent()`.
+- `mode: "template"` scans one template plus its ancestors and returns the extends
+  chain, block definitions, `use`/`embed`/`include` references and unknown tags.
+- A `templates/bundles/<Bundle>/` override wins over the bundle base for
+  `@Bundle/...` names.
+- The scanner is tolerant: malformed tags and unknown tags are reported, never
+  fatal. References resolve to `path:line`, never file contents.
+
+**Parameters:** `mode` (`block` | `template`, default `block`), `name` (string),
+`template` (string, optional — block mode scope), `limit` (number, default 50),
 `directory` (string, optional).
 
 ### `extract_method`
@@ -313,7 +335,7 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `php`      | `extract_method`, `rename_symbol`, `move_class`, `change_route_path` | `composer.json`                      |
 | `go`       | `rename_symbol` (via LSP)                     | `go.mod`                               |
 | `rust`     | `rename_symbol` (via LSP)                     | `Cargo.toml`                           |
-| `symfony`  | (later issue)                                 | `symfony/framework-bundle` in composer |
+| `symfony`  | `symfony_service`, `symfony_events`, `twig_blocks` | `symfony/framework-bundle` in composer |
 | `doctrine` | (later issue)                                 | `doctrine/orm` in composer             |
 | `shopware` | (later issue)                                 | `shopware/core` in composer            |
 

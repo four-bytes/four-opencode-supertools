@@ -3,13 +3,13 @@
 ## Pointer
 - Meta-repo: `~/four-opencode-plugins/`
 - Repo: `four-bytes/four-opencode-supertools`
-- Package: `@four-bytes/four-opencode-supertools` v0.10.0
+- Package: `@four-bytes/four-opencode-supertools` v0.11.0
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Typecheck: `bun run typecheck` (`tsc --noEmit`, checks `src/` **and** `tests/`)
 - Lint: `bun run lint` (`eslint src/ tests/`)
 - Test: `bun test`
 
-## Tool Stack (20 tools, grouped into modules)
+## Tool Stack (21 tools, grouped into modules)
 Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`; `doctrine` and `shopware` are reserved for later issues. See `src/lib/modules/` and `src/modules/`.
 
 ### File Editing (4 tools)
@@ -38,9 +38,10 @@ Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `types
 
 The LSP registry pools one client per (server, canonical project root), resolves roots from markers (tsconfig/package.json, deno.json(c), go.work/go.mod, composer.json, outermost Cargo `[workspace]`), and shuts idle clients down after 10 min (`lsp.idleTimeoutMs`, negative disables). Deno projects select `deno lsp`.
 
-### Symfony (2 tools)
+### Symfony (3 tools)
 - `symfony_service` — service id/class/partial/tag lookup: class, arguments, tags, alias and decorator chain. Runtime `debug:container --format=json`; static `config/services.*` fallback marked `source: static, incomplete: true`
 - `symfony_events` — event listeners sorted by priority (`class::method prio`). Runtime `debug:event-dispatcher --format=json`; static tag + `getSubscribedEvents()` fallback marked incomplete
+- `twig_blocks` — Twig override chain for a block or template: `extends`, `block`, `parent()`, `use`, `embed`, `include` with `path:line`. Runtime `debug:twig --format=json`; static `config/packages/twig.*` fallback marked incomplete; tolerant scanner reports unknown tags
 
 ### AST / Refactoring (4 tools)
 - `extract_method` — extract complete statements into a new method. Rejects partial statements, return/yield/goto, escaping break/continue, static `$this`, and values that escape
@@ -52,9 +53,9 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - Entry: `src/four-opencode-supertools.ts` — delegates to the module registry (`src/lib/modules/`) and registers the active tool bundles
 - Modules: `src/modules/<id>.ts` — one definition per module, tools loaded lazily via dynamic import
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
-- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
+- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 409 tests, bun-native
+- Tests: `tests/` — 428 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)
