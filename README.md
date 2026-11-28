@@ -196,12 +196,25 @@ and namespaces come from `config/packages/twig.(yaml|yml)` and the result is mar
   hint to map them under `twig.tags`.
 - A `templates/bundles/<Bundle>/` override wins over the bundle base for
   `@Bundle/...` names.
+- In a Shopware project (with the `shopware` module active) a Storefront adapter
+  maps `sw_extends`/`sw_include`/`sw_embed`/`sw_use` onto the built-in
+  inheritance semantics and treats every other `sw_*` tag as known, so
+  `{% sw_icon %}` is never reported as unknown. The effective view chain
+  (storefront → plugins → theme, following theme parents) comes from the
+  Shopware resolver instead of `debug:twig`.
+- Without a theme/sales-channel filter every distinct theme yields its own chain.
+  `theme` and `salesChannel` narrow the result to one chain; an unknown theme or
+  an unassigned sales channel returns no chains together with the available theme
+  names and an honest `incomplete` flag. Unknown tags are aggregated across
+  chains.
 - The scanner is tolerant: malformed tags and unknown tags are reported, never
   fatal. References resolve to `path:line`, never file contents.
 
 **Parameters:** `mode` (`block` | `template`, default `block`), `name` (string),
 `template` (string, optional — block mode scope), `limit` (number, default 50),
-`directory` (string, optional).
+`directory` (string, optional), `theme` (string, optional — Shopware only, theme
+name or technical name), `salesChannel` (string, optional — Shopware only, hex
+sales channel id).
 
 ### `extract_method`
 

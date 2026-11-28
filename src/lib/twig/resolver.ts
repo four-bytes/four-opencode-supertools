@@ -71,6 +71,7 @@ export interface TemplateChainUnknownTag {
 
 export interface TemplateChainOptions {
   tagMap?: Readonly<Record<string, string>>;
+  knownTagPrefixes?: readonly string[];
 }
 
 export interface TemplateChain {
@@ -340,9 +341,13 @@ export function resolveTemplate(
   return { name, path: found?.path ?? null, candidates };
 }
 
-function scanFile(path: string, tagMap?: Readonly<Record<string, string>>): TwigScanResult | null {
+function scanFile(
+  path: string,
+  tagMap?: Readonly<Record<string, string>>,
+  knownTagPrefixes?: readonly string[]
+): TwigScanResult | null {
   try {
-    return scanTwig(readFileSync(path, 'utf8'), { tagMap });
+    return scanTwig(readFileSync(path, 'utf8'), { tagMap, knownTagPrefixes });
   } catch {
     return null;
   }
@@ -386,7 +391,7 @@ export function buildTemplateChain(
     if (seen.has(currentPath)) break;
     seen.add(currentPath);
 
-    const scan = scanFile(currentPath, options.tagMap);
+    const scan = scanFile(currentPath, options.tagMap, options.knownTagPrefixes);
     if (!scan) {
       result.missing.push(unresolvedMessage(currentName));
       break;
@@ -423,7 +428,7 @@ export function buildTemplateChain(
     collectReference(scan.includes, result.includes);
 
     for (const tag of scan.tags) {
-      if (isKnownTwigTag(tag.name, options.tagMap)) continue;
+      if (isKnownTwigTag(tag.name, options.tagMap, options.knownTagPrefixes)) continue;
       result.unknownTags.push({ tag: tag.name, path: currentPath, line: tag.line });
     }
 
