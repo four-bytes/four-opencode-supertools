@@ -5,6 +5,7 @@
     "": {
       "name": "@four-bytes/four-opencode-supertools",
       "dependencies": {
+        "@four-bytes/opencode-plugin-lib": "github:four-bytes/four-opencode-plugin-lib#v0.9.1",
         "@opencode-ai/plugin": "1.15.13",
         "tree-sitter-php": "^0.24.2",
         "web-tree-sitter": "^0.26.9",
@@ -44,6 +45,8 @@
     "@eslint/object-schema": ["@eslint/object-schema@3.0.5", "", {}, "sha512-vqTaUEgxzm+YDSdElad6PiRoX4t8VGDjCtt05zn4nU810UIx/uNEV7/lZJ6KwFThKZOzOxzXy48da+No7HZaMw=="],
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.7.3", "", { "dependencies": { "@eslint/core": "^1.2.1", "levn": "^0.4.1" } }, "sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q=="],
+
+    "@four-bytes/opencode-plugin-lib": ["@four-bytes/opencode-plugin-lib@github:four-bytes/four-opencode-plugin-lib#ca7ac40", { "peerDependencies": { "@opencode-ai/plugin": ">=1.16.0", "@opentui/core": "^0.4.1", "@opentui/solid": "^0.4.5", "solid-js": "^1.9.13" }, "optionalPeers": ["@opentui/core", "@opentui/solid", "solid-js"] }, "four-bytes-four-opencode-plugin-lib-ca7ac40", "sha512-hbEpELNq2JbgNqw4pg1WxIcHGZSWRUOqsAZV+yKuY70y607Rhwr4r81kCrc8oExQVAbNiBAbedmScenv6f9E/Q=="],
 
     "@humanfs/core": ["@humanfs/core@0.19.2", "", { "dependencies": { "@humanfs/types": "^0.15.0" } }, "sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA=="],
 

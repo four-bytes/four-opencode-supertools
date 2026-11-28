@@ -1,6 +1,6 @@
 {
   "name": "@four-bytes/four-opencode-supertools",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Token-efficient supertools for opencode agents — patch_file via unified diff and more",
   "type": "module",
   "exports": {
@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@opencode-ai/plugin": "1.15.13",
+    "@four-bytes/opencode-plugin-lib": "github:four-bytes/four-opencode-plugin-lib#v0.9.1",
     "tree-sitter-php": "^0.24.2",
     "web-tree-sitter": "^0.26.9"
   },
