@@ -117,14 +117,16 @@ describe('change_route_path rewriting', () => {
   });
 
   it('rewrites a CRLF file without changing its line endings', async () => {
-    const source = await readFixture('routes', 'crlf.php');
+    const lfSource = await readFixture('routes', 'positional.php');
+    const source = lfSource.replace(/\n/g, '\r\n');
     expect(source).toContain('\r\n');
     const result = await rewriteRoutePaths(source, OLD, NEW);
 
     expect(result.changed).toBe(true);
-    expect(result.changes).toEqual([{ line: 5, oldText: OLD, newText: NEW }]);
+    expect(result.changes).toEqual([{ line: 9, oldText: OLD, newText: NEW }]);
     expect(result.output).toBe(source.replace(`'${OLD}'`, `'${NEW}'`));
-    expect(result.output.split('\n')).toHaveLength(result.output.split('\r\n').length);
+    expect(result.output).toContain('\r\n');
+    expect(result.output.replace(/\r\n/g, '')).not.toContain('\n');
     await parsePhpStrict(result.output);
   });
 });
@@ -163,6 +165,28 @@ describe('change_route_path tool', () => {
       expect(output.success).toBe(true);
       expect(output.changedFiles).toBe(1);
       expect(await readFile(file, 'utf-8')).toContain(`#[Route('${NEW}', methods: ['GET'])]`);
+    });
+  });
+
+  it('preserves CRLF line endings when writing a rewritten file', async () => {
+    await withTempDir(async (dir) => {
+      const file = join(dir, 'CrlfController.php');
+      const lfSource = await readFixture('routes', 'positional.php');
+      const source = lfSource.replace(/\n/g, '\r\n');
+      await writeFile(file, source, 'utf-8');
+
+      const output = await runTool(
+        { oldPath: OLD, newPath: NEW, directory: dir, preview: false },
+        dir
+      );
+
+      expect(output.success).toBe(true);
+      expect(output.changedFiles).toBe(1);
+
+      const written = await readFile(file, 'utf-8');
+      expect(written).toContain(`#[Route('${NEW}', methods: ['GET'])]`);
+      expect(written).toContain('\r\n');
+      expect(written.replace(/\r\n/g, '')).not.toContain('\n');
     });
   });
 
