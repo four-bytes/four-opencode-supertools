@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'bun:test';
+import { afterEach, beforeEach, describe, it, expect } from 'bun:test';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { detectMarkers, detectModules } from '../src/lib/modules/detect';
 
 const fixture = (path: string) => new URL(`./fixtures/${path}`, import.meta.url).pathname;
@@ -15,6 +18,7 @@ describe('detectMarkers', () => {
       doctrine: false,
       shopware: false,
       termlab: false,
+      imagelab: false,
     });
   });
 
@@ -29,6 +33,7 @@ describe('detectMarkers', () => {
       doctrine: false,
       shopware: true,
       termlab: false,
+      imagelab: false,
     });
   });
 
@@ -43,6 +48,7 @@ describe('detectMarkers', () => {
       doctrine: true,
       shopware: false,
       termlab: false,
+      imagelab: false,
     });
   });
 
@@ -57,6 +63,7 @@ describe('detectMarkers', () => {
       doctrine: false,
       shopware: false,
       termlab: false,
+      imagelab: false,
     });
   });
 
@@ -142,5 +149,39 @@ describe('termlab detection', () => {
     expect(detectMarkers({ directory: fixture('rust') }).termlab).toBe(false);
     expect(detectMarkers({ directory: fixture('go') }).termlab).toBe(false);
     expect(detectMarkers({ directory: fixture('typescript') }).termlab).toBe(false);
+  });
+});
+
+describe('imagelab detection', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'imagelab-detect-'));
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  const touch = (relative: string): void => {
+    const target = join(root, relative);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, new Uint8Array());
+  };
+
+  it('enables imagelab for a png under tests/snapshots', () => {
+    touch('tests/snapshots/a.png');
+    expect(detectMarkers({ directory: root }).imagelab).toBe(true);
+    expect(detectModules({ directory: root })).toContain('imagelab');
+  });
+
+  it('ignores a png outside a snapshot or golden directory', () => {
+    touch('assets/a.png');
+    expect(detectMarkers({ directory: root }).imagelab).toBe(false);
+  });
+
+  it('enables imagelab for a png in a golden directory', () => {
+    touch('golden/a.png');
+    expect(detectMarkers({ directory: root }).imagelab).toBe(true);
   });
 });

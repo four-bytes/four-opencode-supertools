@@ -3,6 +3,7 @@
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { hasGoldenSnapshots } from '../imagelab/detect';
 
 const MAX_TEXT_FILE_BYTES = 1_048_576;
 
@@ -17,7 +18,8 @@ export type ModuleId =
   | 'symfony'
   | 'doctrine'
   | 'shopware'
-  | 'termlab';
+  | 'termlab'
+  | 'imagelab';
 
 export interface DetectionContext {
   directory?: string;
@@ -33,6 +35,7 @@ export interface ProjectMarkers {
   shopware: boolean;
   typescript: boolean;
   termlab: boolean;
+  imagelab: boolean;
 }
 
 export interface ComposerJson {
@@ -181,6 +184,7 @@ export function detectMarkers(ctx: DetectionContext): ProjectMarkers {
   if (shopware) symfony = true;
 
   const termlab = roots.some((root) => rootHasTui(root));
+  const imagelab = roots.some((root) => hasGoldenSnapshots(root));
 
   return {
     php: php || shopware || symfony || doctrine,
@@ -191,6 +195,7 @@ export function detectMarkers(ctx: DetectionContext): ProjectMarkers {
     doctrine,
     shopware,
     termlab,
+    imagelab,
   };
 }
 
@@ -205,6 +210,7 @@ export function detectModules(ctx: DetectionContext): ModuleId[] {
     'doctrine',
     'shopware',
     'termlab',
+    'imagelab',
   ];
   return order.filter((id) => markers[id]);
 }

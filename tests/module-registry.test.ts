@@ -204,3 +204,31 @@ describe('module registry — termlab', () => {
     expect(names).toContain('cell_history');
   });
 });
+
+describe('module registry — imagelab', () => {
+  it('registers the six imagelab tools plus core', async () => {
+    const tools = await buildToolMap({ modules: ['imagelab'] }, { logger: () => {} });
+    const names = Object.keys(tools);
+
+    expect(names).toHaveLength(15);
+    for (const name of [
+      'img_diff',
+      'img_sample',
+      'img_crop_scale',
+      'img_compose',
+      'sixel_decode',
+      'contrast_check',
+    ]) {
+      expect(names).toContain(name);
+    }
+  });
+
+  it('does not enable imagelab in auto mode without golden snapshots', async () => {
+    const tools = await buildToolMap(undefined, {
+      directory: fixture('frameworks/empty'),
+      logger: () => {},
+    });
+
+    expect(Object.keys(tools)).not.toContain('img_diff');
+  });
+});
