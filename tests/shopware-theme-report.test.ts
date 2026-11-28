@@ -115,8 +115,8 @@ describe('resolveThemeReport', () => {
     expect(report.assets.map((asset) => asset.entry)).toEqual([
       'app/storefront/src/scss/base.scss',
       'app/storefront/src/scss/child.scss',
-      'app/storefront/dist/js/child.js',
-      'app/storefront/dist/js/missing.js',
+      'app/storefront/src/js/child.js',
+      'app/storefront/src/js/missing.js',
       'app/storefront/src/scss/parent.scss',
     ]);
     expect(report.assets.map((asset) => asset.origin)).toEqual([
