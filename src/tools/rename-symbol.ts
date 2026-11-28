@@ -2,9 +2,15 @@
 // Copyright (c) 2025-2026 Four Bytes
 
 import { readFile as readFilePromise } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { tool } from '@opencode-ai/plugin';
+import type { ToolDefinition, ToolResult } from '@opencode-ai/plugin';
 import type { Node, Tree } from 'web-tree-sitter';
 import { logDebugEvent } from '../lib/debug-logger';
+import type { LspWorkspaceEdit, PrepareRenameResult } from '../lib/lsp-client';
+import { getLspRegistry } from '../lib/lsp-registry';
+import { applyWorkspaceEdit } from '../lib/workspace-edit';
+import type { ModuleId } from '../lib/modules/detect';
 import {
   PHP_RESERVED_WORDS,
   assertPhpIdentifier,
@@ -640,69 +646,348 @@ export async function renameSymbol(input: RenameSymbolInput): Promise<RenameSymb
   }
 }
 
-export const renameSymbolTool = tool({
-  description:
-    'Rename a PHP symbol declaration and provably same-scope references in ONE file. Structural tree-sitter matching with optional line targeting. This is NOT semantic cross-file reference resolution: imports and references in other files are not updated. Pass line to disambiguate duplicate names; variable renames require a line (scope-bound).',
-  args: {
-    filePath: z.string().describe('Absolute PHP file path'),
-    oldName: z
-      .string()
-      .describe('Existing symbol name to rename (leading $ allowed for variables)'),
-    newName: z.string().describe('New PHP identifier'),
-    symbolKind: z
-      .enum([
-        'class',
-        'method',
-        'function',
-        'variable',
-        'interface',
-        'trait',
-        'property',
-        'constant',
-      ])
-      .optional()
-      .describe('Kind of symbol (default: any declaration kind)'),
-    line: z
-      .number()
-      .optional()
-      .describe(
-        '1-based line used to disambiguate same-named declarations; required for variables'
-      ),
-    column: z.number().optional().describe('Optional 1-based column hint (requires line)'),
-    preview: z
-      .boolean()
-      .default(false)
-      .describe('Return the changes without generating modified content'),
-    renameUsages: z
-      .boolean()
-      .default(true)
-      .describe('Rename provably same-scope usages ($this->, self::, static::, same class)'),
-  },
-  execute: async (args) => {
-    const result = await renameSymbol(args);
-    if (!result.success) {
-      throw new Error(`rename_symbol failed: ${result.error}`);
+// ────────────────────────────────────────────────────────────────
+// LSP-backed rename (Go, Rust, TypeScript/JavaScript, and any other
+// language with a registered LSP server)
+// ────────────────────────────────────────────────────────────────
+
+export interface RenameClientLike {
+  openDocument(uri: string, text: string, languageId: string): Promise<void>;
+  prepareRename(
+    uri: string,
+    line: number,
+    character: number,
+    timeout?: number
+  ): Promise<PrepareRenameResult | null>;
+  rename(
+    uri: string,
+    line: number,
+    character: number,
+    newName: string,
+    timeout?: number
+  ): Promise<LspWorkspaceEdit | null>;
+}
+
+export interface RenameRegistryLike {
+  resolveServer(
+    filePath: string,
+    options?: { configRoot?: string }
+  ): { client: RenameClientLike; languageId: string } | null;
+  findConfig(
+    filePath: string,
+    configRoot?: string
+  ): { command: string[]; installHint?: string; languageId: string } | null;
+}
+
+export interface RenameToolContext {
+  /** Resolved active module ids — used to gate the LSP path per language. */
+  modules?: ModuleId[];
+  /** Injection seam for tests; defaults to the shared LSP registry. */
+  registry?: RenameRegistryLike;
+}
+
+const RENAME_LANGUAGE_EXTENSIONS: Record<string, ModuleId> = {
+  '.php': 'php',
+  '.go': 'go',
+  '.rs': 'rust',
+  '.ts': 'typescript',
+  '.tsx': 'typescript',
+  '.js': 'typescript',
+  '.jsx': 'typescript',
+  '.mts': 'typescript',
+  '.cts': 'typescript',
+  '.mjs': 'typescript',
+  '.cjs': 'typescript',
+};
+
+function fileExtension(filePath: string): string {
+  const lastDot = filePath.lastIndexOf('.');
+  if (lastDot === -1) return '';
+  const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+  if (lastDot < lastSlash) return '';
+  return filePath.slice(lastDot).toLowerCase();
+}
+
+function requiredModuleFor(filePath: string): ModuleId | null {
+  return RENAME_LANGUAGE_EXTENSIONS[fileExtension(filePath)] ?? null;
+}
+
+function jsonResult(payload: Record<string, unknown>): ToolResult {
+  return { title: 'Rename Symbol', output: JSON.stringify(payload, null, 2), metadata: {} };
+}
+
+function moduleRefusal(module: ModuleId, filePath: string): ToolResult {
+  return jsonResult({
+    available: false,
+    file: filePath,
+    error: `Module '${module}' is not active. Enable it (modules: ["${module}"]) to rename this file type.`,
+    hint: `Add "${module}" to the modules list, or use "modules": "auto" so it is detected.`,
+  });
+}
+
+interface ResolvedPosition {
+  line: number;
+  character: number;
+}
+
+/**
+ * Resolve the 0-based LSP position for the symbol. Explicit line/column win;
+ * otherwise the first occurrence of `oldName` is used (deriving the column when
+ * only a line is given).
+ */
+function locateSymbol(
+  source: string,
+  oldName: string,
+  line?: number,
+  column?: number
+): ResolvedPosition | { error: string } {
+  const lines = source.split('\n');
+
+  if (line !== undefined) {
+    if (!Number.isInteger(line) || line < 1 || line > lines.length) {
+      return { error: `line ${line} is outside the file` };
     }
-    logDebugEvent('rename_symbol', {
+    if (column !== undefined) {
+      if (!Number.isInteger(column) || column < 1) {
+        return { error: 'column must be a positive integer' };
+      }
+      return { line: line - 1, character: column - 1 };
+    }
+    const character = lines[line - 1].indexOf(oldName);
+    if (character < 0) {
+      return { error: `'${oldName}' not found on line ${line}` };
+    }
+    return { line: line - 1, character };
+  }
+
+  const index = source.indexOf(oldName);
+  if (index < 0) {
+    return { error: `'${oldName}' not found in the file; pass line and column to target it` };
+  }
+  const before = source.slice(0, index);
+  return {
+    line: before.split('\n').length - 1,
+    character: index - (before.lastIndexOf('\n') + 1),
+  };
+}
+
+async function executeLspRename(
+  args: RenameSymbolInput & { dry_run?: boolean },
+  directory: string | undefined,
+  registry: RenameRegistryLike
+): Promise<ToolResult> {
+  const configRoot = directory ?? process.cwd();
+
+  let source: string;
+  try {
+    source = await readFilePromise(args.filePath, 'utf-8');
+  } catch {
+    return jsonResult({
+      available: false,
+      file: args.filePath,
+      hint: `Could not read file: ${args.filePath}`,
+    });
+  }
+
+  const located = locateSymbol(source, args.oldName, args.line, args.column);
+  if ('error' in located) {
+    return jsonResult({ available: false, file: args.filePath, hint: located.error });
+  }
+
+  const resolved = registry.resolveServer(args.filePath, { configRoot });
+  if (!resolved) {
+    const config = registry.findConfig(args.filePath, configRoot);
+    if (!config) {
+      return jsonResult({
+        available: false,
+        file: args.filePath,
+        hint: 'No LSP server configured for this file type. Add a server config for the file extension.',
+      });
+    }
+    return jsonResult({
+      available: false,
+      file: args.filePath,
+      hint: `LSP server "${config.command[0]}" is not installed.`,
+      suggestion: config.installHint ?? `Install the language server for ${config.languageId}`,
+    });
+  }
+
+  const uri = pathToFileURL(args.filePath).href;
+  const position = { line: located.line + 1, character: located.character + 1 };
+
+  try {
+    const { client, languageId } = resolved;
+    await client.openDocument(uri, source, languageId);
+
+    const prepared = await client.prepareRename(uri, located.line, located.character);
+    if (!prepared) {
+      return jsonResult({
+        available: false,
+        file: args.filePath,
+        position,
+        hint: 'rename not possible at this position',
+      });
+    }
+    // `{ defaultBehavior: true }` means the server allows the rename and lets the
+    // client use its default behaviour — there is no server range to validate.
+    // `{ range, placeholder }` is informational; the position below is the
+    // caller's and is used for the rename request either way.
+
+    let workspaceEdit: LspWorkspaceEdit | null;
+    try {
+      workspaceEdit = await client.rename(uri, located.line, located.character, args.newName);
+    } catch (err) {
+      return jsonResult({
+        available: true,
+        file: args.filePath,
+        position,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    if (!workspaceEdit) {
+      return jsonResult({
+        available: true,
+        file: args.filePath,
+        position,
+        error: 'Rename returned no changes',
+      });
+    }
+
+    const dryRun = args.preview === true || args.dry_run === true;
+    const applied = await applyWorkspaceEdit(workspaceEdit, { dryRun });
+
+    logDebugEvent('rename_symbol.lsp', {
       filePath: args.filePath,
       oldName: args.oldName,
       newName: args.newName,
-      symbolKind: args.symbolKind ?? null,
-      line: args.line ?? null,
-      replacementCount: result.replacementCount,
-      warnings: result.warnings ?? [],
+      line: located.line + 1,
+      character: located.character + 1,
+      dryRun,
+      applied: applied.applied,
+      totalEdits: applied.totalEdits,
+      files: applied.files.map((file) => file.path),
+      error: applied.error ?? null,
     });
-    if (args.preview) {
-      return JSON.stringify(
-        {
+
+    return jsonResult({
+      available: true,
+      file: args.filePath,
+      newName: args.newName,
+      applied: applied.applied,
+      totalEdits: applied.totalEdits,
+      files: applied.files,
+      ...(applied.preview ? { preview: applied.preview } : {}),
+      ...(applied.rolledBack ? { rolledBack: true } : {}),
+      ...(applied.error ? { error: applied.error } : {}),
+    });
+  } catch (err) {
+    return jsonResult({
+      available: true,
+      file: args.filePath,
+      position,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
+ * Build the `rename_symbol` tool. PHP stays on the tree-sitter path; every
+ * other language with a registered LSP server goes through prepareRename +
+ * rename. The LSP path is gated on the target language's module.
+ */
+export function createRenameSymbolTool(context: RenameToolContext = {}): ToolDefinition {
+  const { modules } = context;
+
+  return tool({
+    description:
+      'Rename a symbol. PHP uses structural tree-sitter matching in ONE file — NOT semantic cross-file reference resolution. Go, Rust, TypeScript/JavaScript and other languages with a registered LSP server use prepareRename + rename and apply the WorkspaceEdit atomically. Pass line (and optionally column) to target the symbol; variable renames require a line.',
+    args: {
+      filePath: z.string().describe('Absolute file path'),
+      oldName: z
+        .string()
+        .describe('Existing symbol name to rename (leading $ allowed for PHP variables)'),
+      newName: z.string().describe('New identifier'),
+      symbolKind: z
+        .enum([
+          'class',
+          'method',
+          'function',
+          'variable',
+          'interface',
+          'trait',
+          'property',
+          'constant',
+        ])
+        .optional()
+        .describe('PHP only: kind of symbol (default: any declaration kind)'),
+      line: z
+        .number()
+        .optional()
+        .describe(
+          '1-based line used to disambiguate same-named declarations; required for PHP variables'
+        ),
+      column: z.number().optional().describe('Optional 1-based column hint (requires line)'),
+      preview: z
+        .boolean()
+        .default(false)
+        .describe('Return the changes without writing (PHP: no modified content; LSP: dry run)'),
+      renameUsages: z
+        .boolean()
+        .default(true)
+        .describe('PHP only: rename provably same-scope usages ($this->, self::, static::)'),
+      dry_run: z
+        .boolean()
+        .default(false)
+        .describe('LSP path only: compute the edits without writing any file'),
+    },
+    execute: async (args, ctx) => {
+      // PHP keeps the existing tree-sitter implementation byte-for-byte.
+      if (fileExtension(args.filePath) === '.php') {
+        if (modules && !modules.includes('php')) {
+          return moduleRefusal('php', args.filePath);
+        }
+
+        const result = await renameSymbol(args);
+        if (!result.success) {
+          throw new Error(`rename_symbol failed: ${result.error}`);
+        }
+        logDebugEvent('rename_symbol', {
+          filePath: args.filePath,
+          oldName: args.oldName,
+          newName: args.newName,
+          symbolKind: args.symbolKind ?? null,
+          line: args.line ?? null,
           replacementCount: result.replacementCount,
-          previewChanges: result.previewChanges,
           warnings: result.warnings ?? [],
-        },
-        null,
-        2
-      );
-    }
-    return result.modifiedContent ?? '';
-  },
-});
+        });
+        if (args.preview) {
+          return JSON.stringify(
+            {
+              replacementCount: result.replacementCount,
+              previewChanges: result.previewChanges,
+              warnings: result.warnings ?? [],
+            },
+            null,
+            2
+          );
+        }
+        return result.modifiedContent ?? '';
+      }
+
+      const requiredModule = requiredModuleFor(args.filePath);
+      if (requiredModule && modules && !modules.includes(requiredModule)) {
+        return moduleRefusal(requiredModule, args.filePath);
+      }
+
+      const registry = context.registry ?? getLspRegistry();
+      return executeLspRename(args, ctx.directory, registry);
+    },
+  });
+}
+
+/**
+ * Standalone instance without module gating — plugin registration always uses
+ * `createRenameSymbolTool({ modules })`.
+ */
+export const renameSymbolTool = createRenameSymbolTool();

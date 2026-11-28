@@ -3,9 +3,13 @@
 
 import type { ModuleDefinition } from '../lib/modules/registry';
 
-// Go refactoring tools land in a later epic issue (#85).
 export const goModule: ModuleDefinition = {
   id: 'go',
   requires: ['lsp'],
-  tools: async () => ({}),
+  tools: async ({ modules }) => {
+    const { createRenameSymbolTool } = await import('../tools/rename-symbol');
+    return {
+      rename_symbol: createRenameSymbolTool({ modules }),
+    };
+  },
 };

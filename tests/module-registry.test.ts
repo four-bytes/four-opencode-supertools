@@ -31,8 +31,8 @@ describe('module registry — auto detection', () => {
     expect(names).toContain('batch_edit');
     expect(names).toContain('sonar_search');
     expect(names).toContain('file_outline');
+    expect(names).toContain('rename_symbol');
     expect(names).not.toContain('extract_method');
-    expect(names).not.toContain('rename_symbol');
     expect(names).not.toContain('move_class');
   });
 
@@ -42,8 +42,8 @@ describe('module registry — auto detection', () => {
     const names = Object.keys(tools);
 
     expect(names).toContain('batch_edit');
+    expect(names).toContain('rename_symbol');
     expect(names).not.toContain('extract_method');
-    expect(names).not.toContain('rename_symbol');
     expect(names).not.toContain('move_class');
   });
 
@@ -54,8 +54,31 @@ describe('module registry — auto detection', () => {
 
     expect(names).toContain('batch_edit');
     expect(names).toContain('file_outline');
+    expect(names).toContain('rename_symbol');
     expect(names).not.toContain('extract_method');
     expect(warnings).toHaveLength(0);
+  });
+});
+
+describe('module registry — rename_symbol registration', () => {
+  it('registers rename_symbol for php, go, rust and typescript', async () => {
+    for (const module of ['php', 'go', 'rust', 'typescript']) {
+      const tools = await buildToolMap({ modules: [module] }, { logger: () => {} });
+      expect(Object.keys(tools)).toContain('rename_symbol');
+    }
+  });
+
+  it('does not register rename_symbol for core only', async () => {
+    const tools = await buildToolMap({ modules: ['core'] }, { logger: () => {} });
+    expect(Object.keys(tools)).not.toContain('rename_symbol');
+  });
+
+  it('keeps exactly one rename_symbol key when all four modules are active', async () => {
+    const tools = await buildToolMap(
+      { modules: ['php', 'go', 'rust', 'typescript'] },
+      { logger: () => {} }
+    );
+    expect(Object.keys(tools).filter((name) => name === 'rename_symbol')).toHaveLength(1);
   });
 });
 

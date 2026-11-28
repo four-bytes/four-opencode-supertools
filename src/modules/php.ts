@@ -6,15 +6,16 @@ import type { ModuleDefinition } from '../lib/modules/registry';
 export const phpModule: ModuleDefinition = {
   id: 'php',
   requires: [],
-  tools: async () => {
-    const [{ extractMethodTool }, { renameSymbolTool }, { moveClassTool }] = await Promise.all([
-      import('../tools/extract-method'),
-      import('../tools/rename-symbol'),
-      import('../tools/move-class'),
-    ]);
+  tools: async ({ modules }) => {
+    const [{ extractMethodTool }, { createRenameSymbolTool }, { moveClassTool }] =
+      await Promise.all([
+        import('../tools/extract-method'),
+        import('../tools/rename-symbol'),
+        import('../tools/move-class'),
+      ]);
     return {
       extract_method: extractMethodTool,
-      rename_symbol: renameSymbolTool,
+      rename_symbol: createRenameSymbolTool({ modules }),
       move_class: moveClassTool,
     };
   },

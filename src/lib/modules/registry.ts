@@ -15,10 +15,15 @@ import { symfonyModule } from '../../modules/symfony';
 import { doctrineModule } from '../../modules/doctrine';
 import { shopwareModule } from '../../modules/shopware';
 
+export interface ModuleToolsContext {
+  /** All resolved active module ids (after dependency expansion). */
+  modules: ModuleId[];
+}
+
 export interface ModuleDefinition {
   id: ModuleId;
   requires: ModuleId[];
-  tools: () => Promise<Record<string, ToolDefinition>>;
+  tools: (ctx: ModuleToolsContext) => Promise<Record<string, ToolDefinition>>;
 }
 
 export interface RegistryLogger {
@@ -120,7 +125,10 @@ export async function buildToolMap(
   const merged: Record<string, ToolDefinition> = {};
 
   for (const id of ids) {
-    const tools = await MODULE_DEFINITIONS[id].tools();
+    const tools = await MODULE_DEFINITIONS[id].tools({ modules: ids });
+    // rename_symbol is registered by php/go/rust/typescript. Every one of them
+    // builds the identical tool from the same resolved module list, so the
+    // last-wins Object.assign collision is intentional and harmless.
     Object.assign(merged, tools);
   }
 
