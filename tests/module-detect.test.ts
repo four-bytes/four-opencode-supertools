@@ -14,6 +14,7 @@ describe('detectMarkers', () => {
       symfony: true,
       doctrine: false,
       shopware: false,
+      termlab: false,
     });
   });
 
@@ -27,6 +28,7 @@ describe('detectMarkers', () => {
       symfony: true,
       doctrine: false,
       shopware: true,
+      termlab: false,
     });
   });
 
@@ -40,6 +42,7 @@ describe('detectMarkers', () => {
       symfony: false,
       doctrine: true,
       shopware: false,
+      termlab: false,
     });
   });
 
@@ -53,6 +56,7 @@ describe('detectMarkers', () => {
       symfony: false,
       doctrine: false,
       shopware: false,
+      termlab: false,
     });
   });
 
@@ -93,5 +97,50 @@ describe('detectModules', () => {
 
   it('returns the typescript module for a tsconfig project', () => {
     expect(detectModules({ directory: fixture('typescript') })).toEqual(['typescript']);
+  });
+});
+
+describe('termlab detection', () => {
+  it('detects a Rust TUI dependency', () => {
+    const markers = detectMarkers({ directory: fixture('termlab-detect/rust-tui') });
+    expect(markers.termlab).toBe(true);
+    expect(markers.rust).toBe(true);
+    expect(detectModules({ directory: fixture('termlab-detect/rust-tui') })).toEqual([
+      'rust',
+      'termlab',
+    ]);
+  });
+
+  it('detects a TypeScript ink dependency', () => {
+    const markers = detectMarkers({ directory: fixture('termlab-detect/ts-ink') });
+    expect(markers.termlab).toBe(true);
+    expect(detectModules({ directory: fixture('termlab-detect/ts-ink') })).toEqual([
+      'typescript',
+      'termlab',
+    ]);
+  });
+
+  it('detects a Go bubbletea dependency', () => {
+    const markers = detectMarkers({ directory: fixture('termlab-detect/go-tui') });
+    expect(markers.termlab).toBe(true);
+    expect(detectModules({ directory: fixture('termlab-detect/go-tui') })).toEqual([
+      'go',
+      'termlab',
+    ]);
+  });
+
+  it('detects an examples-only project with a language root', () => {
+    const markers = detectMarkers({ directory: fixture('termlab-detect/examples-only') });
+    expect(markers.termlab).toBe(true);
+    expect(detectModules({ directory: fixture('termlab-detect/examples-only') })).toEqual([
+      'rust',
+      'termlab',
+    ]);
+  });
+
+  it('does not flag plain language projects without a TUI dependency', () => {
+    expect(detectMarkers({ directory: fixture('rust') }).termlab).toBe(false);
+    expect(detectMarkers({ directory: fixture('go') }).termlab).toBe(false);
+    expect(detectMarkers({ directory: fixture('typescript') }).termlab).toBe(false);
   });
 });

@@ -8,9 +8,10 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers up to **23 tools**, grouped into selectable modules (see
+The plugin registers up to **29 tools**, grouped into selectable modules (see
 [Modules](#modules)). The default `"modules": "auto"` registers every tool that
-applies to the project — a Symfony PHP project gets all 23. This table mirrors the
+applies to the project — 23 for a Symfony PHP project, plus 6 Terminal Lab tools
+when a TUI is detected. This table mirrors the
 authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -74,6 +75,17 @@ All three call `bin/console` (`debug:container` / `debug:event-dispatcher` /
 | ---------------- | --------------------------------------------------------------------------- |
 | **`sw6_plugin`** | Plugin state/load order, what a plugin registers, and the lifecycle sequence |
 | **`sw6_theme`**  | Theme hierarchy, resolved view chain + assets, and `theme:compile` with SCSS errors |
+
+### Terminal Lab (6)
+
+| Tool                | Description                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------- |
+| **`term_run`**      | Headless tmux session: send text/keys/SGR mouse steps, capture changed rows with attribute runs           |
+| **`trace_decode`**  | Decode a turbo-tui `TURBO_TUI_TRACE` v1 into one compact op line per terminal operation, per frame        |
+| **`trace_replay`**  | Replay frames through an independent tmux emulator, diff against the recorded back buffer and modifiers   |
+| **`cell_history`**  | Ordered writes per screen cell over a trace (character, modifiers, link) — no tmux needed                  |
+| **`width_check`**   | Grapheme display width under unicode-width, wcwidth and a tmux emulator model, disagreements flagged      |
+| **`term_checksum`** | DECRQCRA-style checksum: screen dump or trace frame, plus query/parse of DECRQCRA/DECCKSR sequences       |
 
 ### AST / Refactoring (4)
 
@@ -268,6 +280,120 @@ asset/error entries),
 `timeoutMs` (number, optional — compile timeout, default 300000, clamped to
 1000…900000), `directory` (string, optional).
 
+The Terminal Lab tools operate on the turbo-tui trace format
+(`TURBO_TUI_TRACE 1`, grammar in [docs/termlab.md](docs/termlab.md)). Record one
+with `TURBO_TUI_TRACE=/tmp/demo.trace cargo run --example demo` in a turbo-tui
+app. `term_run`, `trace_replay` and the `tmux` width model require **tmux**
+(Linux/WSL); without it they return `available: false` with
+`error: "tmux not found"` and a hint. The oracle is tmux only — an independent
+VT implementation, not your terminal: terminal-specific rendering bugs of
+Windows Terminal, Kitty or WezTerm cannot be reproduced.
+
+### `term_run`
+
+Drive a headless tmux session and capture the screen after each step. Steps send
+literal text, named keys or SGR mouse events, then wait and capture only changed
+rows — text plus coalesced attribute runs (`{from, to, style}`). Every run owns a
+private tmux server and always kills it.
+
+**Parameters:** `command` (string runs via the shell, array runs as argv),
+`steps` (max 100; each step sets exactly one of `send`/`key`/`mouse`, or only
+`wait`), `width` (default 120), `height` (default 40), `cwd`, `env`, `settleMs`
+(default 120, clamped 0…5000), `timeoutMs` (default 20000, clamped
+1000…300000), `attributes` (default `true`), `full` (default `false` — changed
+rows only), `checksum` (default `false` — per-step DECRQCRA-style checksum),
+`region` (default full screen), `directory` (string, optional).
+
+```jsonc
+{ "command": "cargo run --example demo",
+  "steps": [{ "mouse": { "action": "press",   "x": 20, "y": 3 } },
+            { "mouse": { "action": "drag",    "x": 26, "y": 6 } },
+            { "mouse": { "action": "release", "x": 26, "y": 6 } }] }
+```
+
+### `trace_decode`
+
+Decode a `TURBO_TUI_TRACE` v1 file into one compact line per terminal operation
+(`MOVE`, `SGR`, `OSC8`, `TEXT`, `CLEAR`, …) per frame. Pure TypeScript, no tmux.
+
+**Parameters:** `path` (string, optional — exactly one of `path`/`text`),
+`text` (string, optional), `fromFrame`/`toFrame` (number, optional — inclusive
+frame range), `region` (object, optional — only `TEXT`/`MOVE` ops whose cursor
+lies inside), `limit` (number, default 200, cap 2000 ops per frame),
+`directory` (string, optional).
+
+```jsonc
+{ "path": "/tmp/demo.trace", "fromFrame": 3, "toFrame": 5, "limit": 50 }
+```
+
+### `trace_replay`
+
+Replay recorded frames through an independent tmux emulator and compare the
+rendered screen against the recorded back buffer and modifier masks (colour is
+never compared). `ok: true` with `matched: false` is data, not a failure: each
+divergence carries `frame`, `x`, `y`, `expected`, `actual` and the frame bytes
+as hex. Requires tmux.
+
+**Parameters:** `path`/`text` (exactly one), `fromFrame`/`toFrame` (number,
+optional), `settleMs` (default 60, clamped 0…5000), `timeoutMs` (default 60000,
+clamped 1000…300000), `stopOnFirstDivergence` (default `true`), `limit` (number,
+default 5, cap 100 divergences), `compareMods` (default `true`), `directory`
+(string, optional).
+
+```jsonc
+{ "path": "/tmp/demo.trace", "stopOnFirstDivergence": true, "compareMods": true }
+```
+
+### `cell_history`
+
+Reconstruct what every screen cell held over a trace — the ordered writes per
+cell (character, modifier names and mask, OSC 8 link) — by simulating the
+recorded byte stream. No tmux needed.
+
+**Parameters:** `path`/`text` (exactly one), `x`/`y` (number, optional — one
+cell; must be given together), `region` (object, optional), `fromFrame`/
+`toFrame` (number, optional), `limit` (number, default 200 cells),
+`writesPerCell` (number, default 50), `directory` (string, optional).
+
+```jsonc
+{ "path": "/tmp/demo.trace", "x": 12, "y": 2, "writesPerCell": 10 }
+```
+
+### `width_check`
+
+Display width per grapheme cluster under `unicode` (unicode-width model),
+`wcwidth` and an independent `tmux` emulator model. Reports where the selected
+models disagree, so width assumptions can be settled with evidence.
+
+**Parameters:** `text` (string — required), `models` (array of `unicode`,
+`wcwidth`, `tmux`; default `["unicode", "wcwidth"]`), `plain` (boolean, default
+`false` — drops codepoints and differs flags). The `tmux` model needs tmux and
+reports `tmux: { available: false }` when it is missing.
+
+```jsonc
+{ "text": "— ❤️", "models": ["unicode", "wcwidth", "tmux"] }
+```
+
+### `term_checksum`
+
+DECRQCRA-style checksum (`utf16-sum-mod-65536`). `compute` checksums a text
+screen dump, `trace` a trace frame back buffer, `query` emits the DECRQCRA
+request `CSI Pid;Pp;Pt;Pl;Pb;Pr*y`, and `parse` reads a DECCKSR response
+(`DCS Pid!~hhhh ST` or `CSI Pid;value*y`). Both `compute` and `trace` use the
+same algorithm: the sum of the UTF-16 code units of every cell, modulo 65536 —
+attributes are never included. Windows Terminal implements DECRQCRA, but its
+exact behaviour must be validated once by the user against the build in use.
+
+**Parameters:** `mode` (`compute` | `trace` | `query` | `parse`, default
+`compute`), `text` (string — `compute`), `path` (string — `trace`), `frame`
+(number, default 1), `response` (string — `parse`), `region` (object;
+required for `query`), `page` (number, default 1), `id` (number, default 1),
+`directory` (string, optional).
+
+```jsonc
+{ "mode": "trace", "path": "/tmp/demo.trace", "frame": 1 }
+```
+
 ### `extract_method`
 
 Extract complete statements from a PHP method into a new method using tree-sitter.
@@ -408,12 +534,20 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `symfony`  | `symfony_service`, `symfony_events`, `twig_blocks` | `symfony/framework-bundle` in composer |
 | `doctrine` | (later issue)                                 | `doctrine/orm` in composer             |
 | `shopware` | `sw6_plugin`, `sw6_theme`                     | `shopware/core` in composer            |
+| `termlab`  | `term_run`, `trace_decode`, `trace_replay`, `cell_history`, `width_check`, `term_checksum` | TUI dependency or `examples/` (Rust/TS/Go) |
 
 Auto mode always starts with `core`, `search` and `lsp`, then adds `typescript`,
-`php`, `go`, `rust`, `symfony`, `doctrine` and `shopware` when their marker is
-present in the project directory or worktree. For the framework markers,
-`composer.json` means the `require` or `require-dev` section names the package; a
-shopware project also counts as symfony and PHP.
+`php`, `go`, `rust`, `symfony`, `doctrine`, `shopware` and `termlab` when their
+marker is present in the project directory or worktree. For the framework
+markers, `composer.json` means the `require` or `require-dev` section names the
+package; a shopware project also counts as symfony and PHP. `termlab` is
+auto-detected for Rust, TypeScript or Go projects with a TUI dependency —
+`ratatui`, `ratatui-core`, `crossterm`, `termion`, `cursive`, `notcurses`
+(Rust); `ink`, `blessed`, `neo-blessed`, `terminal-kit`, `@opentui/*`
+(TypeScript); `bubbletea`, `tcell`, `tview`, `termbox-go`, `gocui` (Go) — or an
+`examples/` directory next to `Cargo.toml`, `go.mod` or a TS marker. It has no
+module dependencies and is also selectable explicitly via
+`"modules": ["termlab"]`.
 
 Dependencies are resolved transitively: `typescript`, `go` and `rust` require
 `lsp`, `symfony` requires `php`, `doctrine` and `shopware` require `symfony`.

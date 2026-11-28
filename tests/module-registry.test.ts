@@ -189,3 +189,18 @@ describe('module registry — invalid options', () => {
     expect(warnings.some((warning) => warning.includes('Invalid "modules" option'))).toBe(true);
   });
 });
+
+describe('module registry — termlab', () => {
+  it('registers the six termlab tools plus core', async () => {
+    const tools = await buildToolMap({ modules: ['termlab'] }, { logger: () => {} });
+    const names = Object.keys(tools);
+
+    expect(names).toHaveLength(15);
+    expect(names).toContain('trace_decode');
+    expect(names).toContain('width_check');
+    expect(names).toContain('term_checksum');
+    expect(names).toContain('term_run');
+    expect(names).toContain('trace_replay');
+    expect(names).toContain('cell_history');
+  });
+});
