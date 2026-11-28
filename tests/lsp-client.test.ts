@@ -109,6 +109,68 @@ function handleMessage(msg) {
       ],
     });
   } else if (msg.method === 'shutdown') {
+    // LSP requires the server to answer the shutdown request before exit.
+    send({ jsonrpc: '2.0', id: msg.id, result: null });
+  } else if (msg.method === 'textDocument/codeAction') {
+    send({
+      jsonrpc: '2.0',
+      id: msg.id,
+      result: [
+        {
+          title: 'Extract function',
+          kind: 'refactor.extract.function',
+          edit: {
+            changes: {
+              'file:///test.ts': [
+                {
+                  range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+                  newText: '// extracted\\n',
+                },
+              ],
+            },
+          },
+        },
+        { title: 'Run command', command: 'mock.run', arguments: [1] },
+      ],
+    });
+  } else if (msg.method === 'codeAction/resolve') {
+    send({
+      jsonrpc: '2.0',
+      id: msg.id,
+      result: {
+        title: msg.params.title,
+        kind: 'source.organizeImports',
+        edit: {
+          changes: {
+            'file:///test.ts': [
+              {
+                range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+                newText: '// organized\\n',
+              },
+            ],
+          },
+        },
+      },
+    });
+  } else if (msg.method === 'workspace/executeCommand') {
+    send({
+      jsonrpc: '2.0',
+      id: 9001,
+      method: 'workspace/applyEdit',
+      params: {
+        edit: {
+          changes: {
+            'file:///test.ts': [
+              {
+                range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+                newText: '// from-command\\n',
+              },
+            ],
+          },
+        },
+      },
+    });
+    send({ jsonrpc: '2.0', id: msg.id, result: null });
     send({ jsonrpc: '2.0', id: msg.id, result: null });
     // exit notification will follow, handled by spawn
   } else if (msg.method === 'exit') {
@@ -520,5 +582,79 @@ describe('LspRegistry — DEFAULT_SERVERS', () => {
       expect(server.installHint).toBeDefined();
       expect(server.installHint!.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────
+// Tests: LspClient — code actions
+// ────────────────────────────────────────────────────────────────
+
+describe('LspClient — code actions', () => {
+  let client: LspClient;
+
+  beforeAll(async () => {
+    client = new LspClient();
+    client.spawn(['bun', '-e', MOCK_SERVER_SCRIPT]);
+    await client.initialize('file:///test');
+    client.initialized();
+    await client.openDocument('file:///test.ts', 'const a = 1;\n', 'typescript');
+  });
+
+  afterAll(() => {
+    client.shutdown().catch(() => {
+      // Best-effort cleanup
+    });
+  });
+
+  it('normalises literal actions and plain commands', async () => {
+    const actions = await client.codeAction('file:///test.ts', {
+      start: { line: 0, character: 0 },
+      end: { line: 0, character: 5 },
+    });
+
+    expect(actions).toHaveLength(2);
+    expect(actions[0].title).toBe('Extract function');
+    expect(actions[0].kind).toBe('refactor.extract.function');
+    expect(actions[0].edit).toBeDefined();
+    expect(actions[1].title).toBe('Run command');
+    expect(actions[1].kind).toBeUndefined();
+    expect(actions[1].command?.command).toBe('mock.run');
+    expect(actions[1].command?.arguments).toEqual([1]);
+  });
+
+  it('resolves a deferred action', async () => {
+    const resolved = await client.resolveCodeAction({
+      title: 'Organize imports',
+      kind: 'source.organizeImports',
+      data: { id: 1 },
+    });
+
+    expect(resolved).not.toBeNull();
+    expect(resolved?.kind).toBe('source.organizeImports');
+    expect(resolved?.edit).toBeDefined();
+  });
+
+  it('collects edits pushed through workspace/applyEdit', async () => {
+    expect(client.drainApplyEdits()).toEqual([]);
+
+    await client.executeCommand('mock.run', [1]);
+
+    const edits = client.drainApplyEdits();
+    expect(edits).toHaveLength(1);
+    expect(Object.keys(edits[0].changes ?? {})).toEqual(['file:///test.ts']);
+    expect(client.drainApplyEdits()).toEqual([]);
+  });
+
+  it('returns empty results when the process is not running', async () => {
+    const deadClient = new LspClient();
+    expect(
+      await deadClient.codeAction('file:///test.ts', {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 0 },
+      })
+    ).toEqual([]);
+    expect(await deadClient.resolveCodeAction({ title: 'x' })).toBeNull();
+    await expect(deadClient.executeCommand('x')).rejects.toThrow('LSP server not running');
+    expect(deadClient.drainApplyEdits()).toEqual([]);
   });
 });

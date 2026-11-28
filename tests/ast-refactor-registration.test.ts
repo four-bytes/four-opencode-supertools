@@ -11,7 +11,7 @@ describe('AST refactoring tool registration', () => {
     expect(names).toContain('extract_method');
     expect(names).toContain('rename_symbol');
     expect(names).toContain('move_class');
-    expect(names).toHaveLength(16);
+    expect(names).toHaveLength(17);
   });
 
   it('advertises structural rename, not semantic cross-file resolution', async () => {

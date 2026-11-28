@@ -3,13 +3,13 @@
 ## Pointer
 - Meta-repo: `~/four-opencode-plugins/`
 - Repo: `four-bytes/four-opencode-supertools`
-- Package: `@four-bytes/four-opencode-supertools` v0.8.0
+- Package: `@four-bytes/four-opencode-supertools` v0.9.0
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Typecheck: `bun run typecheck` (`tsc --noEmit`, checks `src/` **and** `tests/`)
 - Lint: `bun run lint` (`eslint src/ tests/`)
 - Test: `bun test`
 
-## Tool Stack (18 tools, grouped into modules)
+## Tool Stack (19 tools, grouped into modules)
 Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`; `doctrine` and `shopware` are reserved for later issues. See `src/lib/modules/` and `src/modules/`.
 
 ### File Editing (4 tools)
@@ -30,10 +30,11 @@ Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `types
 ### Search (1 tool)
 - `sonar_search` — Perplexity Sonar web search (sonar fast default / sonar-pro opt-in). Returns answer + citations.
 
-### LSP / Structure (3 tools)
+### LSP / Structure (4 tools)
 - `lsp_references` — find all references to a symbol via LSP. Saves ~90% tokens vs grep + tracing
 - `lsp_hover` — type info + docs for a symbol via LSP. Saves ~95% tokens vs reading source
 - `file_outline` — structure-only outline (symbols + line numbers) via LSP, regex fallback. Never returns file contents. Saves ~95% tokens
+- `lsp_code_action` — list/apply server-side code actions for a range (extract function, stub interface methods, fill match arms, organize imports). Language-agnostic; `mode: apply` selects by `index`, exact `title` or exact `kind`, `dryRun` previews
 
 The LSP registry pools one client per (server, canonical project root), resolves roots from markers (tsconfig/package.json, deno.json(c), go.work/go.mod, composer.json, outermost Cargo `[workspace]`), and shuts idle clients down after 10 min (`lsp.idleTimeoutMs`, negative disables). Deno projects select `deno lsp`.
 
@@ -52,7 +53,7 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
 - Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 373 tests, bun-native
+- Tests: `tests/` — 395 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

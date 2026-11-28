@@ -8,9 +8,9 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers up to **18 tools**, grouped into selectable modules (see
+The plugin registers up to **19 tools**, grouped into selectable modules (see
 [Modules](#modules)). The default `"modules": "auto"` registers every tool that
-applies to the project — a Symfony PHP project gets all 18. This table mirrors the
+applies to the project — a Symfony PHP project gets all 19. This table mirrors the
 authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -43,15 +43,18 @@ authoritative tool stack in [AGENTS.md](AGENTS.md).
 | ------------------ | -------------------------------------------------- |
 | **`sonar_search`** | Perplexity Sonar web search — answer + citations   |
 
-### LSP / Structure (3)
+### LSP / Structure (4)
 
-| Tool                 | Token Savings | Description                                                       |
-| -------------------- | ------------- | ----------------------------------------------------------------- |
-| **`file_outline`**   | ~95%          | Structure-only outline (symbols + line numbers), never file bodies |
-| **`lsp_hover`**      | ~95%          | Type info and documentation for a symbol at a position            |
-| **`lsp_references`** | ~90%          | Find all references to a symbol at a position                      |
+| Tool                  | Token Savings | Description                                                                  |
+| --------------------- | ------------- | ---------------------------------------------------------------------------- |
+| **`file_outline`**    | ~95%          | Structure-only outline (symbols + line numbers), never file bodies            |
+| **`lsp_hover`**       | ~95%          | Type info and documentation for a symbol at a position                       |
+| **`lsp_references`**  | ~90%          | Find all references to a symbol at a position                                 |
+| **`lsp_code_action`** | ~85%          | List/apply code actions for a range (extract, stub methods, organize imports) |
 
 The LSP registry resolves each server's project root from markers (nearest `tsconfig.json`/`package.json`, `deno.json(c)`, `go.work` before `go.mod`, `composer.json`, and the outermost Cargo `[workspace]`), pools one client per server and canonical root, and shuts idle clients down after 10 minutes. Deno projects use `deno lsp`; `.supertools.json` accepts `lsp.servers` overrides and `lsp.idleTimeoutMs` (negative disables idle shutdown).
+
+`lsp_code_action` is language-agnostic and prints one line per action. Typical kinds: Go — `refactor.extract.function`/`.variable` and `quickfix` stub methods; Rust — `refactor.extract.function` and fill match arms; TypeScript/JavaScript — `refactor.extract.function`/`.constant` and `source.organizeImports`. Apply with `index`, exact `title` or exact `kind`; `dryRun` returns the diff summary without writing.
 
 ### Symfony (2)
 
@@ -274,7 +277,7 @@ Tools are grouped into modules that are selected per project. Configure them in
 | ---------- | --------------------------------------------- | -------------------------------------- |
 | `core`     | 9 file-editing and meta tools                 | always on                              |
 | `search`   | `sonar_search`                                | always on in auto mode                 |
-| `lsp`      | `file_outline`, `lsp_hover`, `lsp_references` | always on in auto mode                 |
+| `lsp`      | `file_outline`, `lsp_hover`, `lsp_references`, `lsp_code_action` | always on in auto mode |
 | `typescript` | `rename_symbol` (via LSP; tsc/Deno support lives in `lint_file`/`run_tests`) | `tsconfig.json`, `package.json`, `deno.json(c)` |
 | `php`      | `extract_method`, `rename_symbol`, `move_class` | `composer.json`                      |
 | `go`       | `rename_symbol` (via LSP)                     | `go.mod`                               |
