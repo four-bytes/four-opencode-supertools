@@ -1,5 +1,6 @@
 {
   "name": "ParentTheme",
   "technicalName": "ParentTheme",
-  "views": ["@Storefront"]
+  "views": ["@Storefront"],
+  "style": ["app/storefront/src/scss/parent.scss"]
 }

@@ -1,5 +1,7 @@
 {
   "name": "ChildTheme",
   "technicalName": "ChildTheme",
-  "views": ["@Storefront", "@Plugins"]
+  "views": ["@Storefront", "@Plugins"],
+  "style": ["app/storefront/src/scss/base.scss", "app/storefront/src/scss/child.scss"],
+  "script": ["app/storefront/src/js/child.js", "app/storefront/src/js/missing.js"]
 }
