@@ -11,7 +11,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { runConsoleJson, type ConsoleRunner } from '../framework/console';
-import { scanTwig, TWIG_KNOWN_TAGS, type TwigScanResult } from './scanner';
+import { isKnownTwigTag, scanTwig, type TwigScanResult } from './scanner';
 
 export interface TwigLoaders {
   paths: string[];
@@ -67,6 +67,10 @@ export interface TemplateChainUnknownTag {
   tag: string;
   path: string;
   line: number;
+}
+
+export interface TemplateChainOptions {
+  tagMap?: Readonly<Record<string, string>>;
 }
 
 export interface TemplateChain {
@@ -336,9 +340,9 @@ export function resolveTemplate(
   return { name, path: found?.path ?? null, candidates };
 }
 
-function scanFile(path: string): TwigScanResult | null {
+function scanFile(path: string, tagMap?: Readonly<Record<string, string>>): TwigScanResult | null {
   try {
-    return scanTwig(readFileSync(path, 'utf8'));
+    return scanTwig(readFileSync(path, 'utf8'), { tagMap });
   } catch {
     return null;
   }
@@ -352,7 +356,8 @@ function unresolvedMessage(name: string): string {
 export function buildTemplateChain(
   name: string,
   loaders: TwigLoaders,
-  root: string
+  root: string,
+  options: TemplateChainOptions = {}
 ): TemplateChain {
   const start = resolveTemplate(name, loaders, root);
   const result: TemplateChain = {
@@ -381,7 +386,7 @@ export function buildTemplateChain(
     if (seen.has(currentPath)) break;
     seen.add(currentPath);
 
-    const scan = scanFile(currentPath);
+    const scan = scanFile(currentPath, options.tagMap);
     if (!scan) {
       result.missing.push(unresolvedMessage(currentName));
       break;
@@ -418,7 +423,7 @@ export function buildTemplateChain(
     collectReference(scan.includes, result.includes);
 
     for (const tag of scan.tags) {
-      if (TWIG_KNOWN_TAGS.has(tag.name)) continue;
+      if (isKnownTwigTag(tag.name, options.tagMap)) continue;
       result.unknownTags.push({ tag: tag.name, path: currentPath, line: tag.line });
     }
 

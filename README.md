@@ -189,6 +189,11 @@ and namespaces come from `config/packages/twig.(yaml|yml)` and the result is mar
   body calls `parent()`.
 - `mode: "template"` scans one template plus its ancestors and returns the extends
   chain, block definitions, `use`/`embed`/`include` references and unknown tags.
+- Custom inheritance tags are auto-detected from project Twig extensions: a
+  `getTokenParsers()` token parser that extends `ExtendsTokenParser`,
+  `IncludeTokenParser`, `EmbedTokenParser`, `UseTokenParser` or `BlockTokenParser`
+  is mapped to that built-in semantic. Unmapped tags stay unknown and carry a
+  hint to map them under `twig.tags`.
 - A `templates/bundles/<Bundle>/` override wins over the bundle base for
   `@Bundle/...` names.
 - The scanner is tolerant: malformed tags and unknown tags are reported, never
@@ -366,15 +371,21 @@ for the process lifetime.
     "tags": {
       "my_tag": "block",
       "another_tag": "include"
+    },
+    "discovery": {
+      "vendor": false,
+      "maxFiles": 3000
     }
   }
 }
 ```
 
-`twig.tags` maps a Twig tag name to its kind. Unknown keys are ignored for
-forward compatibility. Invalid schemas are reported with the offending key (for
-example `twig.tags.my_tag`) and are never silently dropped. This file is the
-config base for the Symfony/Shopware tools.
+`twig.tags` maps a Twig tag name to its kind and overrides auto-detection.
+Unknown keys are ignored for forward compatibility. Invalid schemas are reported
+with the offending key (for example `twig.tags.my_tag`) and are never silently
+dropped. `twig.discovery` controls auto-detection: `vendor` also scans
+`<root>/vendor` (default `false`) and `maxFiles` caps the inspected PHP files
+(default `3000`). This file is the config base for the Symfony/Shopware tools.
 
 ## Install
 

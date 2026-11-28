@@ -10,6 +10,9 @@ All notable changes to this project. Format follows [Keep a Changelog](https://k
 - Loader/template resolver (`src/lib/twig/resolver.ts`): runtime `debug:twig --format=json` loader paths and namespaces, static `config/packages/twig.(yaml|yml)` fallback marked incomplete, `@Bundle` resolution with `templates/bundles/<Bundle>/` overrides before namespace and bounded vendor search, plus cycle-safe extends chains (#91).
 - Block chain builder (`src/lib/twig/blocks.ts`): base → derived ordering by extends depth, bundle overrides after their base, bounded template walk and aggregated unknown tags (#91).
 - Tests: a Symfony-like Twig fixture (runtime `debug:twig` JSON, static-only fixture, bundle base + override, unknown tag) and 21 new bun-native tests (#91).
+- `twig_blocks` auto-detects custom inheritance tags from project Twig extensions (`ExtendsTokenParser` → `extends`, `IncludeTokenParser` → `include`, `EmbedTokenParser` → `embed`, `UseTokenParser` → `use`, `BlockTokenParser` → `block`) and merges them with `.supertools.json` `twig.tags` (config wins), over a bounded `src/` scan (#92).
+- New `twig.discovery.vendor` (default `false`) and `twig.discovery.maxFiles` (default `3000`) config keys; unmapped tags carry a mapping hint and metadata reports `customTags`, `configTags` and `discoveryIncomplete`. Discovery is graceful: a missing `src/`, unreadable files or a capped scan never fail the tool (#92).
+- Tests: custom-tag discovery fixtures (extension + token parsers, unmapped parent), scanner `tagMap` cases and config-override/tool integration, plus discovery config validation (#92).
 
 ### Changed
 - Tool count 20 → 21; the `symfony` module now registers `twig_blocks` (#91).

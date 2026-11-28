@@ -26,10 +26,19 @@ export interface LspConfig {
   servers: LspServerOverride[];
 }
 
+export interface TwigDiscoveryConfig {
+  /** Include `<root>/vendor` in custom tag auto-detection. */
+  vendor: boolean;
+  /** Maximum PHP files inspected during discovery. */
+  maxFiles: number;
+}
+
 export interface SupertoolsConfig {
-  twig: { tags: Record<string, string> };
+  twig: { tags: Record<string, string>; discovery: TwigDiscoveryConfig };
   lsp: LspConfig;
 }
+
+export const DEFAULT_TWIG_MAX_FILES = 3000;
 
 export type ConfigLoadResult =
   | { ok: true; config: SupertoolsConfig; path: string | null } // path null = no file, defaults
@@ -64,8 +73,15 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+function defaultDiscovery(): TwigDiscoveryConfig {
+  return { vendor: false, maxFiles: DEFAULT_TWIG_MAX_FILES };
+}
+
 function defaults(): SupertoolsConfig {
-  return deepFreeze({ twig: { tags: {} }, lsp: { idleTimeoutMs: null, servers: [] } });
+  return deepFreeze({
+    twig: { tags: {}, discovery: defaultDiscovery() },
+    lsp: { idleTimeoutMs: null, servers: [] },
+  });
 }
 
 function fail(path: string, key: string, message: string): ParseFailure {
@@ -209,6 +225,45 @@ function parseTwigTags(
   return { ok: true, value: tags };
 }
 
+function parseTwigDiscovery(
+  value: unknown,
+  path: string
+): ParseOk<TwigDiscoveryConfig> | ParseFailure {
+  const discovery = defaultDiscovery();
+  if (value === undefined) return { ok: true, value: discovery };
+  if (!isPlainObject(value)) {
+    return fail(path, 'twig.discovery', 'Expected "twig.discovery" to be a JSON object');
+  }
+
+  if (value.vendor !== undefined) {
+    if (typeof value.vendor !== 'boolean') {
+      return fail(
+        path,
+        'twig.discovery.vendor',
+        'Expected "twig.discovery.vendor" to be a boolean'
+      );
+    }
+    discovery.vendor = value.vendor;
+  }
+
+  if (value.maxFiles !== undefined) {
+    if (
+      typeof value.maxFiles !== 'number' ||
+      !Number.isFinite(value.maxFiles) ||
+      value.maxFiles <= 0
+    ) {
+      return fail(
+        path,
+        'twig.discovery.maxFiles',
+        'Expected "twig.discovery.maxFiles" to be a positive number'
+      );
+    }
+    discovery.maxFiles = Math.floor(value.maxFiles);
+  }
+
+  return { ok: true, value: discovery };
+}
+
 function load(root: string): ConfigLoadResult {
   const path = join(root, '.supertools.json');
   if (!existsSync(path)) {
@@ -236,13 +291,26 @@ function load(root: string): ConfigLoadResult {
   const twig = parseTwigTags(parsed.twig, path);
   if (!twig.ok) return twig;
 
+  const discovery = parseTwigDiscovery(
+    isPlainObject(parsed.twig) ? parsed.twig.discovery : undefined,
+    path
+  );
+  if (!discovery.ok) return discovery;
+
   const lsp =
     parsed.lsp === undefined
       ? ({ ok: true, value: { idleTimeoutMs: null, servers: [] } } as ParseOk<LspConfig>)
       : parseLsp(parsed.lsp, path);
   if (!lsp.ok) return lsp;
 
-  return { ok: true, config: deepFreeze({ twig: { tags: twig.value }, lsp: lsp.value }), path };
+  return {
+    ok: true,
+    config: deepFreeze({
+      twig: { tags: twig.value, discovery: discovery.value },
+      lsp: lsp.value,
+    }),
+    path,
+  };
 }
 
 export function loadSupertoolsConfig(root: string): ConfigLoadResult {

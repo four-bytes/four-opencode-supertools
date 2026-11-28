@@ -41,7 +41,7 @@ The LSP registry pools one client per (server, canonical project root), resolves
 ### Symfony (3 tools)
 - `symfony_service` — service id/class/partial/tag lookup: class, arguments, tags, alias and decorator chain. Runtime `debug:container --format=json`; static `config/services.*` fallback marked `source: static, incomplete: true`
 - `symfony_events` — event listeners sorted by priority (`class::method prio`). Runtime `debug:event-dispatcher --format=json`; static tag + `getSubscribedEvents()` fallback marked incomplete
-- `twig_blocks` — Twig override chain for a block or template: `extends`, `block`, `parent()`, `use`, `embed`, `include` with `path:line`. Runtime `debug:twig --format=json`; static `config/packages/twig.*` fallback marked incomplete; tolerant scanner reports unknown tags
+- `twig_blocks` — Twig override chain for a block or template: `extends`, `block`, `parent()`, `use`, `embed`, `include` with `path:line`. Auto-detects custom inheritance tags from project Twig extensions and honours `.supertools.json` `twig.tags`; runtime `debug:twig --format=json`; static `config/packages/twig.*` fallback marked incomplete; tolerant scanner reports unknown tags
 
 ### AST / Refactoring (4 tools)
 - `extract_method` — extract complete statements into a new method. Rejects partial statements, return/yield/goto, escaping break/continue, static `$this`, and values that escape

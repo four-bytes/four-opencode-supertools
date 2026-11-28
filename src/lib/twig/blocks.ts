@@ -9,7 +9,7 @@
 
 import { existsSync, readFileSync, readdirSync, type Dirent } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { scanTwig, TWIG_KNOWN_TAGS } from './scanner';
+import { isKnownTwigTag, scanTwig } from './scanner';
 import { buildTemplateChain, resolveTemplate, type TwigLoaders } from './resolver';
 
 export interface BlockDefinition {
@@ -37,6 +37,7 @@ export interface BlockChainResult {
 export interface BlockChainOptions {
   limit?: number;
   template?: string;
+  tagMap?: Readonly<Record<string, string>>;
 }
 
 const DEFAULT_LIMIT = 50;
@@ -153,7 +154,9 @@ export function buildBlockChain(
 
   try {
     if (options.template) {
-      const chain = buildTemplateChain(options.template, loaders, root);
+      const chain = buildTemplateChain(options.template, loaders, root, {
+        tagMap: options.tagMap,
+      });
       if (chain.path) scanned.set(chain.path, chain.template);
       for (const entry of chain.extendsChain) {
         if (entry.path) scanned.set(entry.path, entry.name);
@@ -184,7 +187,7 @@ export function buildBlockChain(
 
     let parsed;
     try {
-      parsed = scanTwig(source);
+      parsed = scanTwig(source, { tagMap: options.tagMap });
     } catch {
       continue;
     }
@@ -208,7 +211,7 @@ export function buildBlockChain(
     }
 
     for (const tag of parsed.tags) {
-      if (TWIG_KNOWN_TAGS.has(tag.name)) continue;
+      if (isKnownTwigTag(tag.name, options.tagMap)) continue;
       unknownTags.push({ tag: tag.name, path, line: tag.line });
     }
   }
