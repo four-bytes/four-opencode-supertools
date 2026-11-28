@@ -2,6 +2,11 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.13.1] - 2026-11-28
+
+### Changed
+- `src/lib/debug-logger.ts` is now a thin alias to `createJsonlLogger` from `@four-bytes/opencode-plugin-lib`. Debug log schema adopts the lib shape: `ts` is epoch milliseconds (was ISO string) and the event name key is `type` (was `event`). No source or test parses these logs.
+
 ## [0.13.0] - 2026-11-28
 
 ### Added
