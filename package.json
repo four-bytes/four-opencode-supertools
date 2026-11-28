@@ -23,7 +23,8 @@
   "author": "Four Bytes",
   "scripts": {
     "postinstall": "bun run build",
-    "build": "bun build ./src/four-opencode-supertools.ts --outdir dist --target bun --format esm --splitting && cp node_modules/web-tree-sitter/web-tree-sitter.wasm dist/ && cp node_modules/tree-sitter-php/tree-sitter-php.wasm dist/",
+    "clean": "rm -rf dist",
+    "build": "bun run clean && bun build ./src/four-opencode-supertools.ts --outdir dist --target bun --format esm --splitting && cp node_modules/web-tree-sitter/web-tree-sitter.wasm dist/ && cp node_modules/tree-sitter-php/tree-sitter-php.wasm dist/",
     "test": "bun test",
     "lint": "eslint src/ tests/",
     "typecheck": "tsc --noEmit"
