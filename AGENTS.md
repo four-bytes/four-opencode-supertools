@@ -3,14 +3,14 @@
 ## Pointer
 - Meta-repo: `~/four-opencode-plugins/`
 - Repo: `four-bytes/four-opencode-supertools`
-- Package: `@four-bytes/four-opencode-supertools` v0.13.0
+- Package: `@four-bytes/four-opencode-supertools` v0.15.0
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Typecheck: `bun run typecheck` (`tsc --noEmit`, checks `src/` **and** `tests/`)
 - Lint: `bun run lint` (`eslint src/ tests/`)
 - Test: `bun test`
 
-## Tool Stack (29 tools, grouped into modules)
-Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`, `shopware`, `termlab` (terminal lab; tmux oracle, needs tmux for `term_run`/`trace_replay`/the `tmux` width model); `doctrine` is reserved for a later issue. See `src/lib/modules/` and `src/modules/`.
+## Tool Stack (35 tools, grouped into modules)
+Module bundles: `core` (editing/meta), `search`, `lsp`, `php` (AST), plus `typescript` (requires `lsp`; tsc/Deno lint/check/test), `go`, `rust`, `symfony`, `shopware`, `termlab` (terminal lab; tmux oracle, needs tmux for `term_run`/`trace_replay`/the `tmux` width model), `imagelab` (image lab; pure-TS PNG diff/sampling/compose, Sixel decode, WCAG contrast; opt-in unless golden PNG snapshots exist; no dependency on termlab/core); `doctrine` is reserved for a later issue. See `src/lib/modules/` and `src/modules/`.
 
 ### File Editing (4 tools)
 - `batch_edit` — grep→replace across N files. Saves ~80% tokens vs. grep→read→edit×N
@@ -57,6 +57,16 @@ The LSP registry pools one client per (server, canonical project root), resolves
 
 The oracle is tmux only — an independent VT implementation, not the user's terminal (Windows Terminal/Kitty/WezTerm rendering bugs cannot be reproduced). Trace format v1, walkthroughs and limitations: `docs/termlab.md`.
 
+### Image Lab (6 tools)
+- `img_diff` — pixel-diff two PNGs: changed pixels (max abs per-channel delta incl. alpha vs `threshold`, default 0), ratio, max/mean delta, 4-connected changed regions (largest first, `maxRegions` default 20), highlighted diff PNG (`highlight` #ff0044, unchanged = B dimmed `dim` 0.35) and optional side-by-side A│B│DIFF composite (`labels` max 3)
+- `img_sample` — pixel colours (hex/rgba per point), region stats (`uniqueColors`/`mean`/`dominant`) and dominant palette (5 bits/channel buckets, `colors` 1..32 default 8) from a PNG
+- `img_crop_scale` — crop a region (default full image) and integer nearest-neighbour scale (1..32 default 1) into `<name>.crop.png`
+- `img_compose` — compose 1..8 PNGs (optional labels, built-in 5x7 uppercase font, `?` fallback) horizontal/vertical/grid (`columns` default ceil(sqrt(count))), `gap` 8, `background` #101010, `labelHeight` 12/`labelScale` 1, integer `scale` 1..16, output `imagelab-compose.png`
+- `sixel_decode` — decode a bare or DCS-wrapped Sixel stream (`path` XOR `data`) to PNG: RGB/HLS colour definitions, `!` repeats, `$`/`-` band controls, `"` raster attributes → `declared`; reports size, bands, palette and `coloursUsed`; undefined registers are black
+- `contrast_check` — WCAG 2.x contrast ratios for explicit `pairs` and/or fg/bg keys from a skin/theme JSON (`background` fallback #000000); flags `aa` ≥ 4.5, `aaa` ≥ 7, large text 3 / 4.5
+
+Pure TypeScript (`node:zlib` PNG codec, no new dependency), 16M-pixel cap, images always written to files — context gets numbers/paths/palettes only. Independent of `termlab` and `core`; opt-in via `"modules": ["imagelab"]` unless golden PNG snapshots are auto-detected. Details: `docs/imagelab.md`.
+
 ### AST / Refactoring (4 tools)
 - `extract_method` — extract complete statements into a new method. Rejects partial statements, return/yield/goto, escaping break/continue, static `$this`, and values that escape
 - `rename_symbol` — rename a symbol. PHP: tree-sitter, one file, provably same-scope references (structural, NOT semantic cross-file resolution); variables require `line`. Go/Rust/TS/JS: LSP `prepareRename` + `rename`, applied atomically (needs `lsp` + the language module); `line` disambiguates, `preview`/`dry_run` preview without writing
@@ -67,9 +77,9 @@ The oracle is tmux only — an independent VT implementation, not the user's ter
 - Entry: `src/four-opencode-supertools.ts` — delegates to the module registry (`src/lib/modules/`) and registers the active tool bundles
 - Modules: `src/modules/<id>.ts` — one definition per module, tools loaded lazily via dynamic import
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
-- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain), `shopware/` (plugin load order, theme inheritance/view chain, plugin report/lifecycle), `termlab/` (trace parser, tmux oracle, SGR screen model, width models, checksum)
+- Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup), `twig/` (tolerant Twig scanner, loader/template resolver, block chain), `shopware/` (plugin load order, theme inheritance/view chain, plugin report/lifecycle), `termlab/` (trace parser, tmux oracle, SGR screen model, width models, checksum), `imagelab/` (PNG codec, raster/colour helpers, diff/regions, compose + 5x7 label font, Sixel decoder, palette sampling, WCAG contrast, golden-snapshot detection)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 640 tests, bun-native
+- Tests: `tests/` — 725 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

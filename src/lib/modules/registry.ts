@@ -15,6 +15,7 @@ import { symfonyModule } from '../../modules/symfony';
 import { doctrineModule } from '../../modules/doctrine';
 import { shopwareModule } from '../../modules/shopware';
 import { termlabModule } from '../../modules/termlab';
+import { imagelabModule } from '../../modules/imagelab';
 
 export interface ModuleToolsContext {
   /** All resolved active module ids (after dependency expansion). */
@@ -49,6 +50,7 @@ const CANONICAL_ORDER: ModuleId[] = [
   'doctrine',
   'shopware',
   'termlab',
+  'imagelab',
 ];
 
 const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
@@ -63,6 +65,7 @@ const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
   doctrine: doctrineModule,
   shopware: shopwareModule,
   termlab: termlabModule,
+  imagelab: imagelabModule,
 };
 
 const KNOWN_MODULE_IDS = new Set<string>(CANONICAL_ORDER);

@@ -8,10 +8,11 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers up to **29 tools**, grouped into selectable modules (see
+The plugin registers up to **35 tools**, grouped into selectable modules (see
 [Modules](#modules)). The default `"modules": "auto"` registers every tool that
 applies to the project — 23 for a Symfony PHP project, plus 6 Terminal Lab tools
-when a TUI is detected. This table mirrors the
+when a TUI is detected and 6 Image Lab tools when golden PNG snapshots are
+detected (or via explicit `"modules": ["imagelab"]`). This table mirrors the
 authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -86,6 +87,17 @@ All three call `bin/console` (`debug:container` / `debug:event-dispatcher` /
 | **`cell_history`**  | Ordered writes per screen cell over a trace (character, modifiers, link) — no tmux needed                  |
 | **`width_check`**   | Grapheme display width under unicode-width, wcwidth and a tmux emulator model, disagreements flagged      |
 | **`term_checksum`** | DECRQCRA-style checksum: screen dump or trace frame, plus query/parse of DECRQCRA/DECCKSR sequences       |
+
+### Image Lab (6)
+
+| Tool                 | Description                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------- |
+| **`img_diff`**       | Pixel-diff two PNGs: changed pixels, deltas and regions, highlighted diff image, optional side-by-side    |
+| **`img_sample`**     | Pixel colours, region statistics and dominant palettes from a PNG image                                  |
+| **`img_crop_scale`** | Crop a region from a PNG and scale it with integer nearest-neighbour sampling                            |
+| **`img_compose`**    | Compose 1..8 PNGs into a strip, stack or grid with labels, gaps, background and pixel scaling            |
+| **`sixel_decode`**   | Decode a bare or DCS-wrapped Sixel stream to PNG; reports bands, palette and declared raster size        |
+| **`contrast_check`** | WCAG 2.x contrast ratios for colour pairs and skin/theme JSON keys, with AA/AAA and large-text flags     |
 
 ### AST / Refactoring (4)
 
@@ -394,6 +406,142 @@ required for `query`), `page` (number, default 1), `id` (number, default 1),
 { "mode": "trace", "path": "/tmp/demo.trace", "frame": 1 }
 ```
 
+The Image Lab tools do pixel-level UI work on PNG files: compare golden snapshots
+against renderings, derive pens from reference screenshots and verify a Sixel
+encoder independently. Images are always written to files — the values returned
+to context are numbers, paths and palettes only. Primary consumers are
+four-sixel-lab #61 (Workbench gallery vs the OS 3.9 reference), #55, the Second
+Reality port and turbo-tui pixel mode #34. The PNG codec and Sixel decoder are
+pure TypeScript over `node:zlib` — no new dependency — and every image or canvas
+is capped at 16M pixels. Full details in [docs/imagelab.md](docs/imagelab.md).
+
+### `img_diff`
+
+Pixel-diff two PNG images and write a highlighted diff image. A pixel counts as
+changed when the maximum absolute per-channel delta (R, G, B and alpha) exceeds
+`threshold`. Changed pixels are painted `highlight`, unchanged pixels show the B
+image dimmed by `dim`. Changed pixels are grouped into 4-connected regions
+(largest first), capped by `maxRegions`; `regionsTotal` and `truncated` report
+when more were found. When the sizes differ the canvas is the bounding maximum
+of both; pixels outside an input are treated as transparent for the delta
+computation and painted opaque black in the diff image (`sizeMismatch` is
+reported). `sideBySide` additionally writes a horizontal A│B│DIFF composite
+(gap 8, labels default `A`, `B`, `DIFF`).
+
+**Parameters:** `a`, `b` (string, PNG paths — required), `output` (string,
+optional — default beside `a`: `<name>.diff.png`, or `<name>.compose.png` with
+`sideBySide`), `threshold` (number 0…255, default 0), `maxRegions` (number
+1…200, default 20), `highlight` (string, default `#ff0044`), `dim` (number 0…1,
+default 0.35), `sideBySide` (boolean, default `false`), `labels` (string[],
+max 3), `directory` (string, optional). Output carries the `a`/`b` sizes,
+`canvas`, `changedPixels`, `totalPixels`, `changedRatio`, `maxDelta`, `meanDelta`,
+`regions` (`x`, `y`, `width`, `height`, `pixels`), `regionsTotal`, `truncated`
+and the `diffImage` path.
+
+```jsonc
+{ "a": "shots/before.png", "b": "shots/after.png", "threshold": 4,
+  "sideBySide": true, "labels": ["REF", "RENDER", "DIFF"] }
+```
+
+### `img_sample`
+
+Read pixel colours, region statistics and dominant palettes from a PNG image.
+Points report `hex` and `rgba`; regions report `uniqueColors`, the `mean` colour
+and `dominant` colours; a `palette` request returns the dominant colours of the
+whole image or one region with `share` and `count` each. Dominant colours are
+bucketed by 5 bits per channel and averaged per bucket.
+
+**Parameters:** `path` (string, required), `points` (array of `{x, y, label?}`,
+max 256, optional), `regions` (array of `{x, y, width, height, label?}`, max 32,
+optional), `palette` (object — `colors` 1…32, default 8, optional `region`;
+defaults to the whole image), `dominant` (number 1…16, default 5 — dominant
+colours per region), `directory` (string, optional). At least one of `points`,
+`regions`, `palette` is required.
+
+```jsonc
+{ "path": "shots/screen.png",
+  "points": [{ "x": 4, "y": 2, "label": "pen" }],
+  "regions": [{ "x": 0, "y": 0, "width": 64, "height": 32, "label": "title" }],
+  "palette": { "colors": 8 } }
+```
+
+### `img_crop_scale`
+
+Crop a rectangular region from a PNG image and optionally scale it with integer
+nearest-neighbour sampling, then write the result.
+
+**Parameters:** `path` (string, required), `region` (`{x, y, width, height}` —
+defaults to the whole image), `scale` (number, integer 1…32, default 1), `output`
+(string, optional — default beside the source: `<name>.crop.png`), `directory`
+(string, optional).
+
+```jsonc
+{ "path": "shots/screen.png", "region": { "x": 8, "y": 8, "width": 32, "height": 16 }, "scale": 4 }
+```
+
+### `img_compose`
+
+Compose 1..8 PNG images into a horizontal strip, vertical stack or grid, with
+optional labels above each panel, a gap, background colour and integer
+nearest-neighbour scaling of every panel. Labels use a built-in 5x7 uppercase
+font (unsupported characters render as `?`) and reserve `labelHeight` pixels
+above their panel (only when at least one label is set). Grid columns default to
+`ceil(sqrt(count))`. Output defaults to `imagelab-compose.png` in the base
+directory.
+
+**Parameters:** `inputs` (array of `{path, label?}`, 1…8 — required), `layout`
+(`horizontal` | `vertical` | `grid`, default `horizontal`), `columns` (number
+1…8, default `ceil(sqrt(count))`), `gap` (number 0…128, default 8), `background`
+(string, default `#101010`), `labelHeight` (number 0…64, default 12),
+`labelScale` (number 1…4, default 1), `scale` (number 1…16, default 1), `output`
+(string, optional), `directory` (string, optional).
+
+```jsonc
+{ "inputs": [{ "path": "shots/a.png", "label": "A" }, { "path": "shots/b.png", "label": "B" }],
+  "layout": "horizontal", "gap": 8, "scale": 2 }
+```
+
+### `sixel_decode`
+
+Decode a Sixel image stream into a PNG, from a file or inline data. Accepts a
+bare stream or a DCS-wrapped one (`ESC P … q` … `ST`). Supports `#` colour
+definitions with RGB (`Pu=2`, percentages) and HLS (`Pu=1`), `!` repeats, `$`
+(return to the band start) and `-` (next band) controls, and `"` raster
+attributes — the declared raster size is reported as `declared`, and the canvas
+is the maximum of painted and declared size. Undefined colour registers render
+black. Reports `size`, `bands` (height/6), `palette` (register index plus
+r/g/b/hex) and `coloursUsed`.
+
+**Parameters:** `path`/`data` (string — exactly one required), `output` (string,
+optional — default beside the source: `<name>.decoded.png`, or
+`sixel-decoded.png` for inline data), `background` (string, optional — fill
+behind the decoded image; default transparent), `directory` (string, optional).
+
+```jsonc
+{ "path": "shots/capture.sixel", "background": "#000000" }
+```
+
+### `contrast_check`
+
+Check WCAG 2.x contrast ratios for explicit foreground/background pairs and/or
+pairs extracted from a JSON skin or theme file. Extraction walks the JSON for
+foreground keys (`fg`, `foreground`, `text`, `textcolor`, `textcolour`, `colour`,
+`color`, `pen`, `ink`, `primary`) paired with a background key (`bg`,
+`background`, `back`, `paper`, `surface`, `backgroundcolor`,
+`backgroundcolour`) in the same object, falling back to the `background`
+argument. Each entry reports `ratio` and pass flags: `aa` (≥ 4.5), `aaa` (≥ 7),
+`largeTextAa` (≥ 3), `largeTextAaa` (≥ 4.5).
+
+**Parameters:** `pairs` (array of `{label?, foreground, background}`, max 200,
+optional), `skin` (string path to a JSON skin/theme file, optional), `background`
+(string, default `#000000` — fallback for extracted pairs), `directory` (string,
+optional). At least one of `pairs`, `skin` is required.
+
+```jsonc
+{ "pairs": [{ "label": "prompt", "foreground": "#e6e6e6", "background": "#101010" }],
+  "skin": "themes/dark.json" }
+```
+
 ### `extract_method`
 
 Extract complete statements from a PHP method into a new method using tree-sitter.
@@ -535,19 +683,26 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `doctrine` | (later issue)                                 | `doctrine/orm` in composer             |
 | `shopware` | `sw6_plugin`, `sw6_theme`                     | `shopware/core` in composer            |
 | `termlab`  | `term_run`, `trace_decode`, `trace_replay`, `cell_history`, `width_check`, `term_checksum` | TUI dependency or `examples/` (Rust/TS/Go) |
+| `imagelab` | `img_diff`, `img_sample`, `img_crop_scale`, `img_compose`, `sixel_decode`, `contrast_check` | golden PNG snapshots (`snapshots`/`golden`, `*.golden.png`) |
 
 Auto mode always starts with `core`, `search` and `lsp`, then adds `typescript`,
-`php`, `go`, `rust`, `symfony`, `doctrine`, `shopware` and `termlab` when their
-marker is present in the project directory or worktree. For the framework
-markers, `composer.json` means the `require` or `require-dev` section names the
-package; a shopware project also counts as symfony and PHP. `termlab` is
-auto-detected for Rust, TypeScript or Go projects with a TUI dependency —
+`php`, `go`, `rust`, `symfony`, `doctrine`, `shopware`, `termlab` and `imagelab`
+when their marker is present in the project directory or worktree. For the
+framework markers, `composer.json` means the `require` or `require-dev` section
+names the package; a shopware project also counts as symfony and PHP. `termlab`
+is auto-detected for Rust, TypeScript or Go projects with a TUI dependency —
 `ratatui`, `ratatui-core`, `crossterm`, `termion`, `cursive`, `notcurses`
 (Rust); `ink`, `blessed`, `neo-blessed`, `terminal-kit`, `@opentui/*`
 (TypeScript); `bubbletea`, `tcell`, `tview`, `termbox-go`, `gocui` (Go) — or an
 `examples/` directory next to `Cargo.toml`, `go.mod` or a TS marker. It has no
 module dependencies and is also selectable explicitly via
-`"modules": ["termlab"]`.
+`"modules": ["termlab"]`. `imagelab` is an independent module with no
+dependencies (neither on `termlab` nor on the other bundles) and is only added
+in auto mode when golden PNG snapshots are detected — a directory named
+`snapshot`, `snapshots`, `__snapshot__`, `__snapshots__`, `golden` or `goldens`
+holding a `.png` file, or a `*.golden.png`/`*.snap.png`/`*.expected.png` file
+within depth 3 (dependency, build and dot-directories are skipped). Otherwise
+select it explicitly via `"modules": ["imagelab"]`.
 
 Dependencies are resolved transitively: `typescript`, `go` and `rust` require
 `lsp`, `symfony` requires `php`, `doctrine` and `shopware` require `symfony`.

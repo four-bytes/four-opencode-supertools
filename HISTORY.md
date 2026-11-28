@@ -2,6 +2,16 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.15.0] - 2026-11-28
+
+### Added
+- Independent `imagelab` module with six tools (`img_diff`, `img_sample`, `img_crop_scale`, `img_compose`, `sixel_decode`, `contrast_check`) for pixel-level UI work: golden-snapshot diffs with changed regions, pixel/region sampling and dominant palettes, crop + nearest-neighbour scaling, labelled composites, Sixel→PNG decoding and WCAG contrast checks (#133).
+- Pure-TS PNG codec (colour types 0/2/3/4/6, bit depths 1–16, tRNS, CRC verification, no Adam7) and Sixel decoder (bare/DCS streams, RGB/HLS colour definitions, `!` repeats, `$`/`-` band controls) over `node:zlib` — no new dependency; 16M-pixel cap per image/canvas (#133).
+- Golden-PNG-snapshot detection (a `snapshot`/`snapshots`/`__snapshot__`/`__snapshots__`/`golden`/`goldens` directory holding a `.png`, or a `*.golden.png`/`*.snap.png`/`*.expected.png` file within depth 3) and per-tool tests plus the `tests/fixtures/imagelab/sample.sixel` fixture (6x12, 2 bands, registers 0 black/1 red/2 green) (#133).
+
+### Changed
+- Tool count 29 → 35; auto mode only enables `imagelab` when golden PNG snapshots are detected, explicit `"modules": ["imagelab"]` otherwise (#133).
+
 ## [0.14.0] - 2026-11-28
 
 ### Added
