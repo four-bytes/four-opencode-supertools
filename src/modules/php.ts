@@ -7,16 +7,22 @@ export const phpModule: ModuleDefinition = {
   id: 'php',
   requires: [],
   tools: async ({ modules }) => {
-    const [{ extractMethodTool }, { createRenameSymbolTool }, { moveClassTool }] =
-      await Promise.all([
-        import('../tools/extract-method'),
-        import('../tools/rename-symbol'),
-        import('../tools/move-class'),
-      ]);
+    const [
+      { extractMethodTool },
+      { createRenameSymbolTool },
+      { moveClassTool },
+      { changeRoutePathTool },
+    ] = await Promise.all([
+      import('../tools/extract-method'),
+      import('../tools/rename-symbol'),
+      import('../tools/move-class'),
+      import('../tools/change-route-path'),
+    ]);
     return {
       extract_method: extractMethodTool,
       rename_symbol: createRenameSymbolTool({ modules }),
       move_class: moveClassTool,
+      change_route_path: changeRoutePathTool,
     };
   },
 };
