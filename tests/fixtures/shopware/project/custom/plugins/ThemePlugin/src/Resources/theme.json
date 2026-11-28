@@ -1,5 +1,5 @@
 {
   "name": "ThemePlugin",
   "technicalName": "ThemePlugin",
-  "views": ["@Storefront", "@Plugins"]
+  "views": ["@Storefront", "@Plugins", "@BetaPlugin"]
 }

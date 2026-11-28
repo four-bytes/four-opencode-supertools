@@ -38,6 +38,7 @@ export interface BlockChainOptions {
   limit?: number;
   template?: string;
   tagMap?: Readonly<Record<string, string>>;
+  knownTagPrefixes?: readonly string[];
 }
 
 const DEFAULT_LIMIT = 50;
@@ -156,6 +157,7 @@ export function buildBlockChain(
     if (options.template) {
       const chain = buildTemplateChain(options.template, loaders, root, {
         tagMap: options.tagMap,
+        knownTagPrefixes: options.knownTagPrefixes,
       });
       if (chain.path) scanned.set(chain.path, chain.template);
       for (const entry of chain.extendsChain) {
@@ -187,7 +189,10 @@ export function buildBlockChain(
 
     let parsed;
     try {
-      parsed = scanTwig(source, { tagMap: options.tagMap });
+      parsed = scanTwig(source, {
+        tagMap: options.tagMap,
+        knownTagPrefixes: options.knownTagPrefixes,
+      });
     } catch {
       continue;
     }
@@ -211,7 +216,7 @@ export function buildBlockChain(
     }
 
     for (const tag of parsed.tags) {
-      if (isKnownTwigTag(tag.name, options.tagMap)) continue;
+      if (isKnownTwigTag(tag.name, options.tagMap, options.knownTagPrefixes)) continue;
       unknownTags.push({ tag: tag.name, path, line: tag.line });
     }
   }

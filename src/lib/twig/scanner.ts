@@ -40,6 +40,12 @@ export interface ScanTwigOptions {
    * using the actual tag name.
    */
   tagMap?: Readonly<Record<string, string>>;
+  /**
+   * Every tag whose name starts with one of these prefixes counts as known
+   * (e.g. Shopware's framework tags such as `sw_extends`). No structural
+   * semantics are implied; only the "unknown" report is suppressed.
+   */
+  knownTagPrefixes?: readonly string[];
 }
 
 /** Builtin Twig tag names that are never reported as unknown. */
@@ -82,10 +88,20 @@ export const TWIG_KNOWN_TAGS: ReadonlySet<string> = new Set([
   'deprecated',
 ]);
 
-/** A tag is known when it is built in or appears in the custom tag map. */
-export function isKnownTwigTag(name: string, tagMap?: Readonly<Record<string, string>>): boolean {
+/** A tag is known when it is built in, appears in the custom tag map or matches a known prefix. */
+export function isKnownTwigTag(
+  name: string,
+  tagMap?: Readonly<Record<string, string>>,
+  knownTagPrefixes?: readonly string[]
+): boolean {
   if (TWIG_KNOWN_TAGS.has(name)) return true;
-  return tagMap !== undefined && Object.prototype.hasOwnProperty.call(tagMap, name);
+  if (tagMap !== undefined && Object.prototype.hasOwnProperty.call(tagMap, name)) return true;
+  if (knownTagPrefixes !== undefined) {
+    for (const prefix of knownTagPrefixes) {
+      if (prefix.length > 0 && name.startsWith(prefix)) return true;
+    }
+  }
+  return false;
 }
 
 const PARENT_CALL = /\bparent\s*\(/;
@@ -183,7 +199,11 @@ function lineAt(starts: number[], offset: number): number {
   return 1;
 }
 
-function scan(source: string, tagMap?: Readonly<Record<string, string>>): TwigScanResult {
+function scan(
+  source: string,
+  tagMap?: Readonly<Record<string, string>>,
+  knownTagPrefixes?: readonly string[]
+): TwigScanResult {
   const chars = source.split('');
   const starts = lineStarts(source);
   const entries: TagEntry[] = [];
@@ -257,7 +277,7 @@ function scan(source: string, tagMap?: Readonly<Record<string, string>>): TwigSc
 
     const semantic = tagMap?.[entry.name] ?? entry.name;
 
-    if (!isKnownTwigTag(entry.name, tagMap)) unknown.add(entry.name);
+    if (!isKnownTwigTag(entry.name, tagMap, knownTagPrefixes)) unknown.add(entry.name);
 
     // Custom tags mapped to `block` are treated as known no-ops: their opening
     // syntax is not the built-in `block <name>` shape, so no block is emitted.
@@ -331,7 +351,7 @@ function scan(source: string, tagMap?: Readonly<Record<string, string>>): TwigSc
 /** Scan Twig source. Never throws — malformed input yields a partial result. */
 export function scanTwig(source: string, options?: ScanTwigOptions): TwigScanResult {
   try {
-    return scan(source, options?.tagMap);
+    return scan(source, options?.tagMap, options?.knownTagPrefixes);
   } catch {
     return emptyResult();
   }
