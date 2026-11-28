@@ -18,6 +18,9 @@ All notable changes to this project. Format follows [Keep a Changelog](https://k
 ### Changed
 - Tool count 20 → 21; the `symfony` module now registers `twig_blocks` (#91).
 
+### Fixed
+- `bun run build` empties `dist/` before bundling (new `clean` script), so stale content-hashed chunks no longer pile up and ship in the published package (#126).
+
 ## [0.10.0] - 2026-11-28
 
 ### Added
