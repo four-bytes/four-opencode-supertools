@@ -65,6 +65,70 @@ export interface Diagnostic {
   source?: string;
 }
 
+export interface LspCodeActionContext {
+  diagnostics?: unknown[];
+  only?: string[];
+  triggerKind?: number;
+}
+
+export interface LspCommand {
+  title: string;
+  command: string;
+  arguments?: unknown[];
+}
+
+export interface LspCodeAction {
+  title: string;
+  kind?: string;
+  diagnostics?: unknown[];
+  edit?: LspWorkspaceEdit;
+  command?: LspCommand;
+  isPreferred?: boolean;
+  disabled?: { reason: string };
+  data?: unknown;
+}
+
+/** Normalise a `textDocument/codeAction` result: commands become kind-less actions. */
+function normalizeCodeActions(result: unknown): LspCodeAction[] {
+  if (!Array.isArray(result)) return [];
+  const actions: LspCodeAction[] = [];
+  for (const entry of result) {
+    if (!entry || typeof entry !== 'object') continue;
+    const value = entry as Record<string, unknown>;
+    if (typeof value.title !== 'string') continue;
+
+    // A plain Command result carries the method name in `command`.
+    if (typeof value.command === 'string') {
+      actions.push({
+        title: value.title,
+        command: {
+          title: value.title,
+          command: value.command,
+          ...(Array.isArray(value.arguments) ? { arguments: value.arguments } : {}),
+        },
+      });
+      continue;
+    }
+
+    actions.push({
+      title: value.title,
+      ...(typeof value.kind === 'string' ? { kind: value.kind } : {}),
+      ...(value.edit && typeof value.edit === 'object'
+        ? { edit: value.edit as LspWorkspaceEdit }
+        : {}),
+      ...(value.command && typeof value.command === 'object'
+        ? { command: value.command as LspCommand }
+        : {}),
+      ...(value.isPreferred === true ? { isPreferred: true } : {}),
+      ...(value.disabled && typeof value.disabled === 'object'
+        ? { disabled: value.disabled as { reason: string } }
+        : {}),
+      ...(value.data !== undefined ? { data: value.data } : {}),
+    });
+  }
+  return actions;
+}
+
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
@@ -89,6 +153,7 @@ export class LspClient {
   private nextId = 1;
   private pending = new Map<number | string, PendingRequest>();
   private diagnosticsCache = new Map<string, Diagnostic[]>();
+  private pendingApplyEdits: LspWorkspaceEdit[] = [];
   private buffer = '';
   private readLoopRunning = false;
   private shutdownRequested = false;
@@ -158,11 +223,36 @@ export class LspClient {
       processId: process.pid,
       rootUri,
       capabilities: {
+        workspace: {
+          applyEdit: true,
+          workspaceEdit: { documentChanges: true },
+        },
         textDocument: {
           hover: { contentFormat: ['markdown', 'plaintext'] },
           references: {},
           documentSymbol: {},
           publishDiagnostics: {},
+          codeAction: {
+            codeActionLiteralSupport: {
+              codeActionKind: {
+                valueSet: [
+                  '',
+                  'quickfix',
+                  'refactor',
+                  'refactor.extract',
+                  'refactor.inline',
+                  'refactor.rewrite',
+                  'source',
+                  'source.organizeImports',
+                  'source.fixAll',
+                ],
+              },
+            },
+            dataSupport: true,
+            resolveSupport: { properties: ['edit'] },
+            isPreferredSupport: true,
+            disabledSupport: true,
+          },
         },
       },
     };
@@ -347,6 +437,79 @@ export class LspClient {
   }
 
   /**
+   * Request code actions for a range. Returns an empty array on timeout/error.
+   * Both literal `CodeAction`s and plain `Command`s are normalised.
+   */
+  async codeAction(
+    uri: string,
+    range: LspRange,
+    context: LspCodeActionContext = {},
+    timeout = 10000
+  ): Promise<LspCodeAction[]> {
+    if (!this.proc) return [];
+    await this._ensureInitialized();
+
+    try {
+      const result = await this.request<unknown>(
+        'textDocument/codeAction',
+        {
+          textDocument: { uri },
+          range,
+          context: {
+            diagnostics: context.diagnostics ?? [],
+            ...(context.only ? { only: context.only } : {}),
+            triggerKind: context.triggerKind ?? 1,
+          },
+        },
+        timeout
+      );
+      return normalizeCodeActions(result);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Resolve a code action's deferred payload (typically its `edit`).
+   * Returns null when the server cannot resolve it.
+   */
+  async resolveCodeAction(action: LspCodeAction, timeout = 10000): Promise<LspCodeAction | null> {
+    if (!this.proc) return null;
+    await this._ensureInitialized();
+
+    try {
+      const result = await this.request<unknown>('codeAction/resolve', action, timeout);
+      return normalizeCodeActions([result])[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Execute a server command (`workspace/executeCommand`). Errors are NOT
+   * swallowed: the caller must know whether the action ran.
+   */
+  async executeCommand(command: string, args?: unknown[], timeout = 10000): Promise<unknown> {
+    if (!this.proc) throw new Error('LSP server not running');
+    await this._ensureInitialized();
+    return this.request<unknown>(
+      'workspace/executeCommand',
+      { command, arguments: args ?? [] },
+      timeout
+    );
+  }
+
+  /**
+   * Take every WorkspaceEdit the server sent via `workspace/applyEdit` since the
+   * last drain. Commands that edit files use this instead of returning an edit.
+   */
+  drainApplyEdits(): LspWorkspaceEdit[] {
+    const edits = this.pendingApplyEdits;
+    this.pendingApplyEdits = [];
+    return edits;
+  }
+
+  /**
    * Get diagnostics for a URI from the cache (populated by publishDiagnostics).
    */
   getDiagnostics(uri: string): Diagnostic[] {
@@ -411,6 +574,7 @@ export class LspClient {
       pending.reject(new Error('LSP client shutting down'));
     }
     this.pending.clear();
+    this.pendingApplyEdits = [];
     this.proc = null;
     this._initPromise = null;
     logDebugEvent('lsp.shutdown', {});
@@ -613,6 +777,22 @@ export class LspClient {
     // Handle server-initiated requests
     if (message.method && message.id !== undefined && message.id !== null) {
       logDebugEvent('lsp.server-request', { method: message.method });
+      // Code actions executed as commands edit files through `workspace/applyEdit`.
+      if (message.method === 'workspace/applyEdit') {
+        const params = message.params as { edit?: LspWorkspaceEdit } | undefined;
+        if (params?.edit) this.pendingApplyEdits.push(params.edit);
+        try {
+          this.sendMessage({
+            jsonrpc: '2.0',
+            id: message.id,
+            result: { applied: true },
+          });
+        } catch {
+          // Best effort
+        }
+        return;
+      }
+
       if (this.proc) {
         const errorResponse: JsonRpcMessage = {
           jsonrpc: '2.0',

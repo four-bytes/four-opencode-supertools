@@ -2,6 +2,17 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.9.0] - 2026-11-28
+
+### Added
+- New `lsp_code_action` in the `lsp` module: `mode: list` prints one compact line per `textDocument/codeAction` result; `mode: apply` selects by `index`, exact `title` or exact `kind` (#86).
+- Deferred actions are completed through `codeAction/resolve`; command-only actions run via `workspace/executeCommand`, and edits the server pushes through `workspace/applyEdit` are collected and applied (#86).
+- WorkspaceEdits are applied through the atomic applier from #85; `dryRun` returns files, edit count and a bounded preview without writing; unknown/ambiguous selectors list the available actions and change nothing (#86).
+- LSP client advertises code-action literal/resolve/disabled capabilities and `workspace.applyEdit`, and answers server-initiated `workspace/applyEdit` requests (#86).
+
+### Changed
+- Tool count 18 → 19; `lsp` module now registers `lsp_code_action` (#86).
+
 ## [0.8.0] - 2026-11-28
 
 ### Added
