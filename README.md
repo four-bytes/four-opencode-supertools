@@ -8,9 +8,9 @@ Token-efficient supertools for opencode agents. Each tool saves significant toke
 
 ## Tools
 
-The plugin registers up to **19 tools**, grouped into selectable modules (see
+The plugin registers up to **20 tools**, grouped into selectable modules (see
 [Modules](#modules)). The default `"modules": "auto"` registers every tool that
-applies to the project — a Symfony PHP project gets all 19. This table mirrors the
+applies to the project — a Symfony PHP project gets all 20. This table mirrors the
 authoritative tool stack in [AGENTS.md](AGENTS.md).
 
 ### File Editing (4)
@@ -68,13 +68,14 @@ Both call `bin/console` (`debug:container` / `debug:event-dispatcher` with
 `getSubscribedEvents()` with `source: "static", incomplete: true` when the console
 cannot run.
 
-### AST / Refactoring (3)
+### AST / Refactoring (4)
 
 | Tool                | Description                                                                                  |
 | ------------------- | -------------------------------------------------------------------------------------------- |
 | **`extract_method`** | Extract complete statements into a new method; rejects unsupported data/control-flow cases    |
 | **`rename_symbol`**  | Rename a symbol: PHP structural (one file) / Go·Rust·TS·JS via LSP, applied atomically |
 | **`move_class`**     | Move a class-like declaration, preserving declare blocks and referenced `use` imports         |
+| **`change_route_path`** | Rewrite `#[Route()]` path arguments project-wide, exact match only, preview writes nothing |
 
 > `extract_method` and the PHP `rename_symbol` path are **pure**: they return the
 > generated content and never write to disk. The LSP `rename_symbol` path applies the
@@ -262,6 +263,36 @@ Move a class, interface, trait or enum to another file using tree-sitter.
 - `targetPath` (string) — Target PHP file path (absolute or relative to cwd)
 - `namespace` (string, optional) — Explicit target namespace
 
+### `change_route_path`
+
+Rewrite the path argument of `#[Route()]` attributes across the project using
+tree-sitter.
+
+- AST-based: only `attribute` nodes named `Route` (or ending in `\Route`, e.g. the
+  FQCN `#[\Symfony\Component\Routing\Attribute\Route(...)]`) are inspected.
+- Only the path argument is rewritten — the first positional argument or a named
+  `path:` argument. Single- and double-quoted literals keep their quote style;
+  only the characters between the quotes are replaced.
+- The value must equal `oldPath` **exactly**. Nothing else changes: no other
+  strings, comments, docblocks, method names or attribute arguments.
+- A project-wide recursive scan is the point of the tool. It skips `.git`,
+  `node_modules`, `vendor`, `var/cache` and `.idea`, inspects `.php` files and is
+  bounded by `maxFiles`; an optional explicit `files` list replaces the scan.
+- Zero matches is a normal no-op success. Each modified file is re-parsed before
+  it is written; a file that cannot be parsed is reported in `failedFiles` and
+  left untouched.
+- `preview: true` reports changes and writes nothing.
+
+**Parameters:**
+
+- `oldPath` (string) — Exact route path to replace (e.g. `/api/orders`)
+- `newPath` (string) — Replacement route path
+- `directory` (string, optional) — Scan root; defaults to the tool context directory
+- `files` (string[], optional) — Explicit files (absolute or relative to the scan
+  root); skips the scan
+- `maxFiles` (number, optional) — Cap on scanned PHP files, default `500`
+- `preview` (boolean, optional) — Report changes without writing, default `false`
+
 ## Modules
 
 Tools are grouped into modules that are selected per project. Configure them in
@@ -279,7 +310,7 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `search`   | `sonar_search`                                | always on in auto mode                 |
 | `lsp`      | `file_outline`, `lsp_hover`, `lsp_references`, `lsp_code_action` | always on in auto mode |
 | `typescript` | `rename_symbol` (via LSP; tsc/Deno support lives in `lint_file`/`run_tests`) | `tsconfig.json`, `package.json`, `deno.json(c)` |
-| `php`      | `extract_method`, `rename_symbol`, `move_class` | `composer.json`                      |
+| `php`      | `extract_method`, `rename_symbol`, `move_class`, `change_route_path` | `composer.json`                      |
 | `go`       | `rename_symbol` (via LSP)                     | `go.mod`                               |
 | `rust`     | `rename_symbol` (via LSP)                     | `Cargo.toml`                           |
 | `symfony`  | (later issue)                                 | `symfony/framework-bundle` in composer |

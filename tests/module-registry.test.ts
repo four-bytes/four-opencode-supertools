@@ -18,7 +18,7 @@ describe('module registry — auto detection', () => {
     const tools = await buildToolMap(undefined, { directory: fixture('php/composer'), logger });
     const names = Object.keys(tools);
 
-    expect(names).toHaveLength(17);
+    expect(names).toHaveLength(18);
     expect(names).toContain('extract_method');
     expect(names).toContain('lsp_code_action');
     expect(warnings).toHaveLength(0);
@@ -143,7 +143,7 @@ describe('module registry — disable option', () => {
     );
 
     expect(Object.keys(tools)).not.toContain('sonar_search');
-    expect(Object.keys(tools)).toHaveLength(16);
+    expect(Object.keys(tools)).toHaveLength(17);
     expect(warnings).toHaveLength(0);
   });
 

@@ -5,13 +5,14 @@ const phpFixture = new URL('./fixtures/php/composer', import.meta.url).pathname;
 const goFixture = new URL('./fixtures/go', import.meta.url).pathname;
 
 describe('AST refactoring tool registration', () => {
-  it('registers extract_method, rename_symbol and move_class for a PHP project', async () => {
+  it('registers extract_method, rename_symbol, move_class and change_route_path for a PHP project', async () => {
     const plugin = await FourOpencodeSupertools({ directory: phpFixture } as never);
     const names = Object.keys(plugin.tool ?? {});
     expect(names).toContain('extract_method');
     expect(names).toContain('rename_symbol');
     expect(names).toContain('move_class');
-    expect(names).toHaveLength(17);
+    expect(names).toContain('change_route_path');
+    expect(names).toHaveLength(18);
   });
 
   it('advertises structural rename, not semantic cross-file resolution', async () => {

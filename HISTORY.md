@@ -2,6 +2,15 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.10.0] - 2026-11-28
+
+### Added
+- New `change_route_path` in the `php` module: rewrites the path argument of `#[Route()]` attributes project-wide, AST-based via tree-sitter-php. Only the first positional argument or a named `path:` argument is touched, single/double quote style is preserved, and an exact value match is required — no other strings, comments, docblocks or arguments change (#121).
+- The project scan is explicit and bounded by `maxFiles` (default 500, warns when truncated); an optional explicit `files` list replaces the walk. `preview` reports changes without writing, and each modified file is re-parsed before it is written (#121).
+
+### Changed
+- Tool count 19 → 20; the `php` module now registers `change_route_path` (#121).
+
 ## [0.9.0] - 2026-11-28
 
 ### Added
