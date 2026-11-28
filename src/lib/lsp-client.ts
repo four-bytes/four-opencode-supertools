@@ -12,15 +12,41 @@ import { logDebugEvent } from './debug-logger';
 // Types
 // ────────────────────────────────────────────────────────────────
 
-interface LspPosition {
+export interface LspPosition {
   line: number;
   character: number;
 }
 
-interface LspRange {
+export interface LspRange {
   start: LspPosition;
   end: LspPosition;
 }
+
+export interface LspTextEdit {
+  range: LspRange;
+  newText: string;
+}
+
+export interface LspTextDocumentEdit {
+  textDocument: { uri: string; version?: number | null };
+  edits: LspTextEdit[];
+}
+
+/** File-operation entries are rejected by the applier (out of scope for rename). */
+export interface LspFileOperation {
+  kind: string;
+  uri?: string;
+  oldUri?: string;
+  newUri?: string;
+}
+
+export interface LspWorkspaceEdit {
+  changes?: Record<string, LspTextEdit[]>;
+  documentChanges?: Array<LspTextDocumentEdit | LspFileOperation>;
+}
+
+export type PrepareRenameResult =
+  { range: LspRange; placeholder: string } | { defaultBehavior: true };
 
 export interface HoverResult {
   contents: string;
@@ -245,6 +271,79 @@ export class LspClient {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Ask the server whether a symbol can be renamed at a position.
+   * Returns null only for a real null/error response. `{ defaultBehavior: true }`
+   * means the server allows the rename and the client may use its default
+   * behaviour; it is not "cannot rename".
+   */
+  async prepareRename(
+    uri: string,
+    line: number,
+    character: number,
+    timeout = 10000
+  ): Promise<PrepareRenameResult | null> {
+    if (!this.proc) return null;
+    await this._ensureInitialized();
+
+    try {
+      const result = await this.request<unknown>(
+        'textDocument/prepareRename',
+        { textDocument: { uri }, position: { line, character } },
+        timeout
+      );
+
+      if (!result || typeof result !== 'object' || Array.isArray(result)) return null;
+      const value = result as Record<string, unknown>;
+
+      // `{ defaultBehavior: true }` allows the rename without a server range.
+      if ('defaultBehavior' in value) return { defaultBehavior: true };
+
+      if ('range' in value && value.range && typeof value.range === 'object') {
+        return {
+          range: value.range as LspRange,
+          placeholder: typeof value.placeholder === 'string' ? value.placeholder : '',
+        };
+      }
+
+      // A bare Range is also a valid response.
+      if ('start' in value && 'end' in value) {
+        return { range: result as LspRange, placeholder: '' };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Request a single rename and return the server's WorkspaceEdit.
+   * Unlike hover/references, errors are NOT swallowed: a rename failure is the
+   * caller's answer and must be distinguishable from "cannot rename here".
+   * Returns null only for an empty/null result.
+   */
+  async rename(
+    uri: string,
+    line: number,
+    character: number,
+    newName: string,
+    timeout = 10000
+  ): Promise<LspWorkspaceEdit | null> {
+    if (!this.proc) {
+      throw new Error('LSP server not running');
+    }
+    await this._ensureInitialized();
+
+    const result = await this.request<LspWorkspaceEdit | null>(
+      'textDocument/rename',
+      { textDocument: { uri }, position: { line, character }, newName },
+      timeout
+    );
+
+    return result ?? null;
   }
 
   /**

@@ -65,18 +65,18 @@ Both call `bin/console` (`debug:container` / `debug:event-dispatcher` with
 `getSubscribedEvents()` with `source: "static", incomplete: true` when the console
 cannot run.
 
-### AST / PHP Refactoring (3)
+### AST / Refactoring (3)
 
 | Tool                | Description                                                                                  |
 | ------------------- | -------------------------------------------------------------------------------------------- |
 | **`extract_method`** | Extract complete statements into a new method; rejects unsupported data/control-flow cases    |
-| **`rename_symbol`**  | Rename a declaration + provably same-scope references in one file (structural, not semantic) |
+| **`rename_symbol`**  | Rename a symbol: PHP structural (one file) / Go·Rust·TS·JS via LSP, applied atomically |
 | **`move_class`**     | Move a class-like declaration, preserving declare blocks and referenced `use` imports         |
 
-> These three tools are **pure**: they return the generated content and never
-> write to disk. The caller decides whether to apply it.
->
-> Git, GitHub and GitLab tools live in the separate `four-opencode-git` plugin.
+> `extract_method` and the PHP `rename_symbol` path are **pure**: they return the
+> generated content and never write to disk. The LSP `rename_symbol` path applies the
+> server's `WorkspaceEdit` atomically (with rollback on failure). Git, GitHub and
+> GitLab tools live in the separate `four-opencode-git` plugin.
 
 ### `batch_edit`
 
@@ -197,35 +197,42 @@ Collisions are compared case-insensitively, matching PHP method-name rules.
 
 ### `rename_symbol`
 
-Rename a PHP declaration and provably same-scope references in **one file**. The
-matching is structural (tree-sitter), with optional line targeting. It is **not**
-semantic cross-file reference resolution: imports and references in other files are
-not updated and a warning says so.
+Rename a symbol; the path depends on the file extension.
 
-- Same-class `$this->`, `self::` and `static::` usages are renamed by default.
-- Class/interface/trait/function renames honour `renameUsages: false` too: only the
-  declaration changes, and a warning reports the skipped usages.
-- "Provably same-scope" is structural, not semantic: a nested anonymous class is its
-  own scope, and same-name members on other objects/classes are counted and reported
-  as warnings.
-- Duplicate declarations of the same name are ambiguous: pass `line` to select one.
-- Variable renames require `line` — variables are scope-bound and file-wide matching
-  would rename unrelated functions.
-- Free-function renames only update call sites in this file; calls in other files are
-  not resolved.
+- `.php` — a declaration and provably same-scope references in **one file**. The
+  matching is structural (tree-sitter), with optional line targeting. It is **not**
+  semantic cross-file reference resolution: imports and references in other files are
+  not updated and a warning says so.
+  - Same-class `$this->`, `self::` and `static::` usages are renamed by default.
+  - Class/interface/trait/function renames honour `renameUsages: false` too: only the
+    declaration changes, and a warning reports the skipped usages.
+  - "Provably same-scope" is structural, not semantic: a nested anonymous class is its
+    own scope, and same-name members on other objects/classes are counted and reported
+    as warnings.
+  - Duplicate declarations of the same name are ambiguous: pass `line` to select one.
+  - Variable renames require `line` — variables are scope-bound and file-wide matching
+    would rename unrelated functions.
+  - Free-function renames only update call sites in this file; calls in other files are
+    not resolved.
+- Go, Rust, TypeScript/JavaScript and any other language with a registered LSP server —
+  `textDocument/prepareRename` + `textDocument/rename`, applied as a `WorkspaceEdit`
+  atomically (all files or none). Requires the `lsp` module and the matching language
+  module (`go`, `rust`, `typescript`). The target position comes from `line` + `column`,
+  or `line` + the first `oldName` on it, or the first file occurrence.
 
 **Parameters:**
 
-- `filePath` (string) — Absolute PHP file path
-- `oldName` / `newName` (string) — Existing symbol name (leading `$` allowed for
-  variables) and valid new PHP identifier
-- `symbolKind` (string, optional) — `class`, `method`, `function`, `variable`,
+- `filePath` (string) — Absolute file path
+- `oldName` / `newName` (string) — Existing symbol name (leading `$` allowed for PHP
+  variables) and the new identifier
+- `symbolKind` (string, optional) — PHP only: `class`, `method`, `function`, `variable`,
   `interface`, `trait`, `property` or `constant`
-- `line` (number, optional) — 1-based line inside the declaration to disambiguate
+- `line` (number, optional) — 1-based line inside the declaration/target to disambiguate
 - `column` (number, optional) — 1-based column hint (requires `line`)
-- `preview` (boolean, optional) — Return changes without modified content
-- `renameUsages` (boolean, optional) — Default `true`; `false` leaves same-scope
-  usages unchanged and reports them as warnings
+- `preview` (boolean, optional) — PHP: return changes without modified content; LSP: dry run
+- `renameUsages` (boolean, optional) — PHP only; default `true`; `false` leaves
+  same-scope usages unchanged and reports them as warnings
+- `dry_run` (boolean, optional) — LSP path only: compute the edits without writing any file
 
 ### `move_class`
 
@@ -268,10 +275,10 @@ Tools are grouped into modules that are selected per project. Configure them in
 | `core`     | 9 file-editing and meta tools                 | always on                              |
 | `search`   | `sonar_search`                                | always on in auto mode                 |
 | `lsp`      | `file_outline`, `lsp_hover`, `lsp_references` | always on in auto mode                 |
-| `typescript` | (tsc/Deno support lives in `lint_file`/`run_tests`) | `tsconfig.json`, `package.json`, `deno.json(c)` |
+| `typescript` | `rename_symbol` (via LSP; tsc/Deno support lives in `lint_file`/`run_tests`) | `tsconfig.json`, `package.json`, `deno.json(c)` |
 | `php`      | `extract_method`, `rename_symbol`, `move_class` | `composer.json`                      |
-| `go`       | (refactoring tools land in a later issue)     | `go.mod`                               |
-| `rust`     | (refactoring tools land in a later issue)     | `Cargo.toml`                           |
+| `go`       | `rename_symbol` (via LSP)                     | `go.mod`                               |
+| `rust`     | `rename_symbol` (via LSP)                     | `Cargo.toml`                           |
 | `symfony`  | (later issue)                                 | `symfony/framework-bundle` in composer |
 | `doctrine` | (later issue)                                 | `doctrine/orm` in composer             |
 | `shopware` | (later issue)                                 | `shopware/core` in composer            |

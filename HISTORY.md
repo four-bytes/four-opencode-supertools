@@ -2,6 +2,18 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.8.0] - 2026-11-28
+
+### Added
+- `rename_symbol` dispatches by file extension: `.php` keeps the existing tree-sitter implementation unchanged, while Go, Rust, TypeScript/JavaScript and any other language with a registered LSP server use `textDocument/prepareRename` + `textDocument/rename` and apply the returned `WorkspaceEdit` atomically (#85).
+- New `workspace-edit` applier: bottom-up edits, overlap rejection, dry-run preview and all-or-nothing writes with rollback; supports both `changes` and `documentChanges` (#85).
+- `rename_symbol` is now registered by the `go`, `rust` and `typescript` modules (gated per target language) in addition to `php` (#85).
+- New optional `dry_run` argument for the LSP path; `preview` acts as a dry run there too (#85).
+
+### Changed
+- `ModuleDefinition.tools` now receives the resolved active module ids, so a tool can gate its behaviour by language module (#85).
+- Tests: 373 (bun-native), including workspace-edit atomicity, cross-file LSP dispatch with injected fake servers, and live gopls/rust-analyzer/tsserver checks that skip when the server is absent (#85).
+
 ## [0.7.0] - 2026-11-28
 
 ### Added

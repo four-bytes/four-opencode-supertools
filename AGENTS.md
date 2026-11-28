@@ -3,7 +3,7 @@
 ## Pointer
 - Meta-repo: `~/four-opencode-plugins/`
 - Repo: `four-bytes/four-opencode-supertools`
-- Package: `@four-bytes/four-opencode-supertools` v0.7.0
+- Package: `@four-bytes/four-opencode-supertools` v0.8.0
 - Build: `bun run build` → `dist/four-opencode-supertools.js`
 - Typecheck: `bun run typecheck` (`tsc --noEmit`, checks `src/` **and** `tests/`)
 - Lint: `bun run lint` (`eslint src/ tests/`)
@@ -41,9 +41,9 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - `symfony_service` — service id/class/partial/tag lookup: class, arguments, tags, alias and decorator chain. Runtime `debug:container --format=json`; static `config/services.*` fallback marked `source: static, incomplete: true`
 - `symfony_events` — event listeners sorted by priority (`class::method prio`). Runtime `debug:event-dispatcher --format=json`; static tag + `getSubscribedEvents()` fallback marked incomplete
 
-### AST / PHP Refactoring (3 tools)
+### AST / Refactoring (3 tools)
 - `extract_method` — extract complete statements into a new method. Rejects partial statements, return/yield/goto, escaping break/continue, static `$this`, and values that escape
-- `rename_symbol` — rename one declaration + provably same-scope references in a single file (structural tree-sitter matching; NOT semantic cross-file resolution). `line` disambiguates duplicates; variables require `line`
+- `rename_symbol` — rename a symbol. PHP: tree-sitter, one file, provably same-scope references (structural, NOT semantic cross-file resolution); variables require `line`. Go/Rust/TS/JS: LSP `prepareRename` + `rename`, applied atomically (needs `lsp` + the language module); `line` disambiguates, `preview`/`dry_run` preview without writing
 - `move_class` — move a class-like declaration; copies the source `declare()` block verbatim, copies referenced `use` imports, resolves the namespace from `composer.json` PSR-4 or an explicit `namespace`; never overwrites a non-empty target
 
 ## Architecture
@@ -52,7 +52,7 @@ The LSP registry pools one client per (server, canonical project root), resolves
 - Tools: `src/tools/` — one file per tool, all use `tool()` from `@opencode-ai/plugin`
 - Lib: `src/lib/` — diff-parse.ts, debug-logger.ts, php-parser.ts (shared tree-sitter setup)
 - Framework: `src/lib/framework/` — Symfony/Shopware detection, `bin/console` runner, and `.supertools.json` config
-- Tests: `tests/` — 330 tests, bun-native
+- Tests: `tests/` — 373 tests, bun-native
 
 ## Dependencies
 - `@opencode-ai/plugin` 1.15.13 (exact pin)

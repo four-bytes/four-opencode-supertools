@@ -3,9 +3,13 @@
 
 import type { ModuleDefinition } from '../lib/modules/registry';
 
-// Rust refactoring tools land in a later epic issue (#88).
 export const rustModule: ModuleDefinition = {
   id: 'rust',
   requires: ['lsp'],
-  tools: async () => ({}),
+  tools: async ({ modules }) => {
+    const { createRenameSymbolTool } = await import('../tools/rename-symbol');
+    return {
+      rename_symbol: createRenameSymbolTool({ modules }),
+    };
+  },
 };
