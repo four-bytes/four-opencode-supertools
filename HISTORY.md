@@ -2,6 +2,16 @@
 
 All notable changes to this project. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.12.0] - 2026-11-28
+
+### Added
+- New `sw6_plugin` in the `shopware` module: `mode: list` reports plugin state and load order; `mode: overview` lists what one plugin registers — services, scheduled tasks, subscribers, entities, migrations, admin modules and Twig overrides — with `path:line` references and a `sw6_theme` pointer for theme plugins; `mode: lifecycle` plans or runs the Shopware console sequence (#97).
+- Lifecycle safety: a run is a dry run unless `confirm: true`, and `uninstall` keeps user data by default (`--keep-user-data`) unless `keepUserData: false`; theme state changes append `theme:compile` (#97).
+- Tests: `sw6_plugin` list/overview/lifecycle against the Shopware plugin fixtures, covering dry-run zero console calls, uninstall flags, theme compilation and non-Shopware/missing-argument paths (#97).
+
+### Changed
+- Tool count 21 → 22; the `shopware` module now registers `sw6_plugin` (#97).
+
 ## [0.11.0] - 2026-11-28
 
 ### Added

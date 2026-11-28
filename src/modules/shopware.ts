@@ -3,9 +3,11 @@
 
 import type { ModuleDefinition } from '../lib/modules/registry';
 
-// Shopware tools land in a later epic issue (#90).
 export const shopwareModule: ModuleDefinition = {
   id: 'shopware',
   requires: ['symfony'],
-  tools: async () => ({}),
+  tools: async () => {
+    const { sw6PluginTool } = await import('../tools/sw6-plugin');
+    return { sw6_plugin: sw6PluginTool };
+  },
 };

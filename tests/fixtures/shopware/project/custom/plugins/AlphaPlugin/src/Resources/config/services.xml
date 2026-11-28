@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<container xmlns="http://symfony.com/schema/dic/services">
+    <services>
+        <service id="AlphaPlugin\ScheduledTask\ExampleTask" class="AlphaPlugin\ScheduledTask\ExampleTask">
+            <tag name="shopware.scheduled.task"/>
+        </service>
+        <service id="AlphaPlugin\Subscriber\ProductSubscriber" class="AlphaPlugin\Subscriber\ProductSubscriber">
+            <tag name="kernel.event_subscriber"/>
+        </service>
+    </services>
+</container>
